@@ -1,0 +1,10 @@
+[project]
+    dependencies    = ["droneresponse-mathtools", "mavsdk>=3.10.0", "rich>=14.1.0"]
+    description     = "Drone missions for SADE simulations"
+    name            = "mission"
+    readme          = "README.md"
+    requires-python = "==3.11.*"
+    version         = "0.1.0"
+
+[tool.uv.sources]
+    droneresponse-mathtools = { url = "https://mm-public-fileshare.s3.us-west-2.amazonaws.com/droneresponse_mathtools-0.3.0-py2.py3-none-any.whl" }
