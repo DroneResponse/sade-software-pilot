@@ -1,6 +1,8 @@
 set shell := ["bash", "-uc"]
 set dotenv-load := true
 
+alias pre-commit := hooks
+
 # Show available recipes
 default:
     @just --list
@@ -23,6 +25,12 @@ install:
 [group('dev')]
 install-dev:
     uv sync --extra dev
+
+[doc('Update pre-commit hooks and dependencies')]
+[group('qa')]
+update:
+    uv run pre-commit autoupdate
+    uv sync --upgrade
 
 # ============================================================================
 # Testing & Quality Assurance
@@ -63,23 +71,13 @@ install-hooks:
 
 [doc('Run pre-commit hooks on all files')]
 [group('qa')]
-hooks:
-    uv run pre-commit run --all-files
+hooks *args:
+    uv run pre-commit run --all-files {{ args }}
 
 [doc('Run pre-commit hooks on staged files')]
 [group('qa')]
-hooks-staged:
-    uv run pre-commit run
-
-[doc('Update pre-commit hook versions')]
-[group('qa')]
-update-hooks:
-    uv run pre-commit autoupdate
-
-[doc('Type check with mypy')]
-[group('qa')]
-typecheck:
-    uv run mypy src/ --ignore-missing-imports
+hooks-staged *args:
+    uv run pre-commit run {{ args }}
 
 [doc('Run security checks with bandit')]
 [group('qa')]
@@ -87,9 +85,9 @@ security:
     @echo "Running bandit security checks..."
     uv run bandit -r src/ -ll || true
 
-[doc('Run all quality checks (pre-commit, type, security)')]
+[doc('Run all quality checks (pre-commits, security)')]
 [group('qa')]
-check: hooks typecheck security
+check: hooks security
 
 # ============================================================================
 # Build & Release
@@ -110,12 +108,3 @@ clean:
 [doc('Clean and rebuild package')]
 [group('build')]
 rebuild: clean build
-
-# ============================================================================
-# Maintenance
-# ============================================================================
-
-[doc('Update project dependencies')]
-[group('maintain')]
-update:
-    uv sync --upgrade

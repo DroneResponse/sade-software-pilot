@@ -1,22 +1,45 @@
 ---
+# Example markdownlint configuration file:
+# https://github.com/DavidAnson/markdownlint/blob/main/schema/.markdownlint.yaml
 default: true
 no-hard-tabs: true
 
-# MD013: Line length - disabled for documentation flexibility
-line-length: false
+# TIP: set any block to "false" to disable it
 
-# MD024: Multiple headers with the same content - allow duplicates in different sections
+# TIP: on VS Code, use Ctrl+Space to see available rules and properties
+
+# MD013: Line length
+line-length: false
+# line-length:
+#     line_length: 119
+#     heading_line_length: 119
+#     code_block_line_length: 119
+#     code_blocks: false
+#     tables: false
+#     headings: false
+#     strict: false
+#     stern: false
+
+# MD024: Multiple headers with the same content
 no-duplicate-heading:
     siblings_only: true
 
-# MD040: Fenced code blocks should have a language specified - relaxed for examples
-fenced-code-language: false
+# MD029: Ordered list item prefix
+ol-prefix:
+    style: one_or_ordered
 
-# MD041: First line in a file should be a top-level heading - relaxed for templates
-first-line-heading: false
+# MD030: Spaces after list markers
+ul-indent:
+    indent: 4
+    start_indented: false
+    start_indent: 4
 
-# MD033: Inline HTML - allowed for documentation
+# MD004: Header style
+ul-style:
+    style: consistent
+
+# MD033: Inline HTML
 no-inline-html: false
 
-# MD036: Emphasis used instead of a heading - allowed for examples
-no-emphasis-as-heading: false
+# MD042: No empty links
+no-empty-links: false
