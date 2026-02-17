@@ -1,0 +1,22 @@
+---
+default: true
+no-hard-tabs: true
+
+# MD013: Line length - disabled for documentation flexibility
+line-length: false
+
+# MD024: Multiple headers with the same content - allow duplicates in different sections
+no-duplicate-heading:
+    siblings_only: true
+
+# MD040: Fenced code blocks should have a language specified - relaxed for examples
+fenced-code-language: false
+
+# MD041: First line in a file should be a top-level heading - relaxed for templates
+first-line-heading: false
+
+# MD033: Inline HTML - allowed for documentation
+no-inline-html: false
+
+# MD036: Emphasis used instead of a heading - allowed for examples
+no-emphasis-as-heading: false

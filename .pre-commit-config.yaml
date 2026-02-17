@@ -1,0 +1,49 @@
+exclude: "^docs/|devcontainer.json"
+default_stages: [pre-commit]
+
+default_language_version:
+    python: python3.11
+
+repos:
+    - repo: https://github.com/pre-commit/pre-commit-hooks
+      rev: v6.0.0
+      hooks:
+          #   - id: trailing-whitespace
+          #   - id: debug-statements
+          #   - id: check-builtin-literals
+          - id: end-of-file-fixer
+          - id: check-json
+          - id: check-toml
+          - id: check-yaml
+          - id: check-case-conflict
+          - id: check-docstring-first
+          - id: detect-private-key
+
+    - repo: https://github.com/astral-sh/ruff-pre-commit
+      rev: v0.14.14
+      hooks:
+          # Linter
+          - id: ruff
+            args:
+                [
+                    --no-cache,
+                    --fix,
+                    --exit-non-zero-on-fix,
+                    --config,
+                    "pyproject.toml",
+                ]
+          # Formatter
+          - id: ruff-format
+            args: [--config, "pyproject.toml"]
+
+    # - repo: https://github.com/igorshubovych/markdownlint-cli
+    #   rev: "v0.47.0"
+    #   hooks:
+    #       - id: markdownlint
+    #         args: ["-f"]
+    #         stages: [pre-commit]
+
+ci:
+    autoupdate_schedule: weekly
+    skip: []
+    submodules: false
