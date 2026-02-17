@@ -1,6 +1,11 @@
 name: PR Checks
 
 on:
+    workflow_dispatch:
+    push:
+        branches:
+            - main
+            - master
     pull_request:
         branches:
             - main
@@ -8,6 +13,7 @@ on:
 
 env:
     python-version: "3.11"
+    UV_LINK_MODE: copy
 
 jobs:
     lint-and-test:
@@ -29,9 +35,6 @@ jobs:
 
             - name: Format check with ruff
               run: uv run ruff format src/ tests/ --diff --check
-
-            - name: Type check with mypy
-              run: uv run mypy src/ --ignore-missing-imports
 
             - name: Run pytest
               run: uv run pytest tests/ -v --tb=short

@@ -122,7 +122,7 @@ class TestMissionAsyncBehavior:
         tasks = [create_example_mission(home) for home in homes]
         results = await asyncio.gather(*tasks)
 
-        assert len(results) == 3
+        assert len(results) == len(homes)
         for mission in results:
             assert isinstance(mission, list)
             assert len(mission) > 0

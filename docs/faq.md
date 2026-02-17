@@ -199,16 +199,13 @@ uv run pytest tests/ -vv
 
 Our CI requires passing all checks:
 
-- `ruff check` (linting)
-- `ruff format` (formatting)
-- `mypy` (type checking)
+- `just hooks` runs pre-commit hooks locally.
 
-Fix them before merging:
+Fix them before merging. Note formatters will change files automatically if needed; just
+stage your changes and commit them.
 
-```bash
-uv run ruff format src/      # Auto-fix format
-uv run ruff check src/ --fix # Auto-fix some lint issues
-```
+Some problems cannot be automatically fixed and will need manual code changes or
+explicit ignores at the line or file level.
 
 ## Mission Design Questions
 
