@@ -82,7 +82,7 @@ just hooks
 ### 4. Submitting your software pilot
 
 When it looks good, you can open a PR to our base repository. Please see
-[CONTRIBUTING.md](CONTRIBUTING.md) for more details.
+[docs/contributing.md](docs/contributing.md) for more details.
 
 ## API Quick Reference
 
@@ -149,10 +149,10 @@ print(f"Flying drone {config.drone_id} at {config.custom_settings['speed_mps']} 
 
 ## Documentation
 
-- [API Reference](API.md) - Complete API documentation
-- [Contributing Guide](CONTRIBUTING.md) - How to contribute missions
-- [Quickstart](QUICKSTART.md) - Step-by-step getting started guide
-- [Examples](examples/) - Example missions
+- [API Reference](docs/api.md) - Complete API documentation
+- [Contributing Guide](docs/contributing.md) - How to contribute missions
+- [Quickstart](docs/quickstart.md) - Step-by-step getting started guide
+- [Examples](docs/examples/) - Example missions
 
 ## Support
 
