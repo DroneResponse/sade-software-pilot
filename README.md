@@ -44,10 +44,7 @@ src/software_pilot/
   zones.py              # SADE zone access control
 
 tests/
-  test_mission.py       # Example tests
-
-examples/
-  simple_waypoint_mission.py
+  test_mission.py       # Example tes     simple_waypoint_mission.py
   sade_zone_aware_mission.py
   search_pattern_mission.py
 
@@ -159,12 +156,12 @@ print(f"Flying drone {config.drone_id} at {config.custom_settings['speed_mps']} 
 
 ## Support
 
-- [API Documentation](API.md)
-- [FAQ](FAQ.md)
+- [API Documentation](docs/api.md)
+- [FAQ](docs/faq.md)
 - [Report Issues](https://github.com/DroneResponse/sade-software-pilot/issues)
 - [Discussions](https://github.com/DroneResponse/sade-software-pilot/discussions)
 
 ---
 
 **Ready to build your custom mission?** Start with the [Quickstart
-Guide](QUICKSTART.md)!
+Guide](docs/quickstart.md)!

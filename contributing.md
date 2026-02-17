@@ -17,7 +17,7 @@ cd sade-software-pilot
 uv sync
 
 # 4. Customize your mission
-nano src/software_pilot/mission.py
+# edit the source files under src/software_pilot/
 
 # 5. Test locally
 just test

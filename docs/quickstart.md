@@ -2,7 +2,30 @@
 
 A step-by-step guide to creating and deploying your first custom drone mission.
 
-## 5-Minute Quick Start
++ [Getting Started with SADE Software Pilots](#getting-started-with-sade-software-pilots)
+    + [Quick Start](#quick-start)
+    + [Step-by-Step Guide](#step-by-step-guide)
+        + [Step 1: Prerequisites](#step-1-prerequisites)
+        + [Step 2: Fork and Clone](#step-2-fork-and-clone)
+        + [Step 3: Set Up Development Environment](#step-3-set-up-development-environment)
+        + [Step 4: Understand the Project Structure](#step-4-understand-the-project-structure)
+        + [Step 5: Customize Your Mission](#step-5-customize-your-mission)
+        + [Step 6: Test Your Changes](#step-6-test-your-changes)
+        + [Step 7: Commit and Push](#step-7-commit-and-push)
+        + [Step 8: Open a Pull Request](#step-8-open-a-pull-request)
+        + [Step 9: Deploy Your Mission](#step-9-deploy-your-mission)
+    + [Common Customizations](#common-customizations)
+        + [Change Drone Speed](#change-drone-speed)
+        + [Add Custom Parameters](#add-custom-parameters)
+        + [Request SADE Zone Access](#request-sade-zone-access)
+        + [Monitor Drone Position](#monitor-drone-position)
+    + [Troubleshooting](#troubleshooting)
+    + [Next Steps](#next-steps)
+    + [File Structure You'll Edit](#file-structure-youll-edit)
+    + [Resources](#resources)
+    + [Getting Help](#getting-help)
+
+## Quick Start
 
 ```bash
 # 1. Fork the repository
@@ -27,10 +50,10 @@ uv run software-pilot --drone-id=0 --help
 
 You'll need:
 
-- **Git** - Version control
-- **uv** - Python package manager (install: `pip install uv`)
-- **Python 3.11+** - Language runtime
-- **GitHub account** - To fork the repository
++ **Git** - Version control
++ **uv** - Python package and project manager <https://docs.astral.sh/uv/getting-started/installation/>
++ **just** - Task runner <https://github.com/casey/just>
++ **GitHub account** - To fork the repository
 
 ### Step 2: Fork and Clone
 
@@ -68,18 +91,18 @@ You should see the CLI help text.
 
 ```
 src/software_pilot/
-  cli.py           # ← Entry point (CLI)
-  config.py        # ← Configuration schema
-  mission.py       # ← Edit here for your mission logic
-  uav.py           # ← Drone control (don't modify)
-  zones.py         # ← SADE zone access (don't modify)
+  cli.py           # Entry point (CLI)
+  config.py        # Configuration schema
+  mission.py       # Edit here for your mission logic
+  uav.py           # Drone control (don't modify)
+  zones.py         # SADE zone access (don't modify)
 
 examples/
-  simple_waypoint_mission.py      # ← Reference
-  sade_zone_aware_mission.py      # ← Reference
+  simple_waypoint_mission.py      # Reference
+  sade_zone_aware_mission.py      # Reference
 
 tests/
-  test_mission.py  # ← Add tests here
+  test_mission.py  # Add tests here
 ```
 
 ### Step 5: Customize Your Mission
@@ -294,55 +317,7 @@ async for position in drone.telemetry_position():
 
 ## Troubleshooting
 
-### Command Not Found: `uv`
-
-Install uv:
-
-```bash
-pip install uv
-```
-
-### Command Not Found: `software-pilot`
-
-Ensure you're in the project directory:
-
-```bash
-cd /path/to/sade-software-pilot
-uv run software-pilot --drone-id=0
-```
-
-### Import Errors
-
-If you get `ModuleNotFoundError`:
-
-```bash
-# Reinstall in development mode
-uv sync
-```
-
-### Tests Fail
-
-Run with verbose output:
-
-```bash
-uv run pytest tests/ -vv
-```
-
-Common issues:
-
-- Missing MAVSDK port (needs simulator running)
-- Incorrect configuration parameters
-- Dependency version conflicts
-
-### Git Push Rejected
-
-Ensure your branch is up to date:
-
-```bash
-git fetch origin
-git rebase origin/master
-git push origin feature/my-mission
-```
+See [troubleshooting.md](TROUBLESHOOTING.md) for common issues and solutions.
 
 ## Next Steps
 
@@ -355,34 +330,34 @@ git push origin feature/my-mission
 
 ```
 src/software_pilot/
-  mission.py              # EDIT: Your custom mission
+    mission.py              # EDIT: Your custom mission
 
-  # Don't modify:
-  __init__.py
-  cli.py
-  config.py
-  uav.py
-  zones.py
+    # avoid modifying:
+    __init__.py
+    cli.py
+    config.py
+    uav.py
+    zones.py
 
 tests/
-  test_mission.py         # EDIT: Add tests for your mission
+    test_mission.py         # EDIT: Add tests for your mission
 
 pyproject.toml            # EDIT: Change version, add dependencies
 ```
 
 ## Resources
 
-- **MAVSDK Documentation:** [MAVSDK Python](https://mavsdk.mavlink.io/)
-- **Coordinate System:** [NED Coordinates Explained](https://en.wikipedia.org/wiki/Local_tangent_plane_coordinates)
-- **SADE Overview:** See main [README.md](README.md)
-- **API Reference:** See [API.md](API.md)
++ **MAVSDK Documentation:** [MAVSDK Python](https://mavsdk.mavlink.io/)
++ **Coordinate System:** [NED Coordinates Explained](https://en.wikipedia.org/wiki/Local_tangent_plane_coordinates)
++ **SADE Overview:** See main [README.md](README.md)
++ **API Reference:** See [API.md](API.md)
 
 ## Getting Help
 
-- 📖 Check [FAQ.md](FAQ.md)
-- 🐛 Search [GitHub Issues](https://github.com/DroneResponse/sade-software-pilot/issues)
-- 💬 Start a [GitHub Discussion](https://github.com/DroneResponse/sade-software-pilot/discussions)
-- 📧 Contact SADE team
++ Check [FAQ.md](FAQ.md)
++ Search [GitHub Issues](https://github.com/DroneResponse/sade-software-pilot/issues)
++ Start a [GitHub Discussion](https://github.com/DroneResponse/sade-software-pilot/discussions)
++ Contact SADE team
 
 ---
 
