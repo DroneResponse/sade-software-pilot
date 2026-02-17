@@ -12,11 +12,11 @@ cd sade-software-pilot
 # Install dependencies
 uv sync
 
-# Customize your mission
-nano src/software_pilot/mission.py
+# Customize your mission; see:
+# src/software_pilot/mission.py
 
 # Test locally
-uv run pytest tests/
+just test
 
 # Use in SADE simulation
 sade_wr submit --sim-config my-config.json
@@ -24,21 +24,13 @@ sade_wr submit --sim-config my-config.json
 
 ## What is a Software Pilot?
 
-A software pilot is a Python package that contains autonomous mission logic for simulated drones in SADE. Each pilot:
+A software pilot is a Python package that contains autonomous mission logic for
+simulated drones in SADE. Each pilot:
 
 - Communicates with drone autopilots via MAVSDK
 - Requests airspace access via SADE zone management
 - Executes waypoint missions
 - Can access custom configuration parameters
-
-## Features
-
-- 🚁 **MAVLink autopilot control** via MAVSDK
-- 📍 **SADE zone-aware** airspace access requests
-- 🔧 **Fully customizable** mission logic
-- 📦 **Python package** distribution via git
-- 🧪 **Built-in testing** support
-- 📖 **Comprehensive API** documentation
 
 ## Repository Structure
 
@@ -67,38 +59,33 @@ examples/
 
 ### As the Template Repository
 
-Start with the official template:
+Start with the [official
+template](https://github.com/DroneResponse/sade-software-pilot.git).
 
-```json
-{
-  "pilot": {
-    "repo_url": "https://github.com/DroneResponse/sade-software-pilot.git",
-    "repo_branch": "master"
-  },
-  "drones": [ ... ],
-  "environment": [ ... ]
-}
-```
-
-### Customize for Your Mission
+### 2. Customize for Your Mission
 
 1. **Fork the repository** to your GitHub account
-2. **Create a feature branch**: `git checkout -b feature/my-mission`
+2. **Create a feature branch**: `git switch -c feature/my-mission`
 3. **Edit mission logic**: Modify `src/software_pilot/mission.py`
-4. **Test locally**: `uv run pytest tests/`
+4. **Test locally**: `just test`
 5. **Push and open a PR**: `git push origin feature/my-mission`
-6. **Wait for approval**: SADE team reviews and merges to `contrib/{username}/my-mission`
+6. **Wait for approval**: SADE team reviews and merges to
+   `contrib/{username}/my-mission`
 
-Then use your custom pilot:
+### 3. Run checks
 
-```json
-{
-  "pilot": {
-    "repo_url": "https://github.com/YOUR_USERNAME/sade-software-pilot.git",
-    "repo_branch": "contrib/YOUR_USERNAME/my-mission"
-  }
-}
+```bash
+# run tests to make sure your code works as expected before having to start a simulation run
+just test
+
+# linting, formatting, type checking, etc.
+just hooks
 ```
+
+### 4. Submitting your software pilot
+
+When it looks good, you can open a PR to our base repository. Please see
+[CONTRIBUTING.md](CONTRIBUTING.md) for more details.
 
 ## API Quick Reference
 
@@ -167,75 +154,17 @@ print(f"Flying drone {config.drone_id} at {config.custom_settings['speed_mps']} 
 
 - [API Reference](API.md) - Complete API documentation
 - [Contributing Guide](CONTRIBUTING.md) - How to contribute missions
-- [Configuration Format](CONFIG_PILOT_FORMAT.md) - Pilot configuration schema
 - [Quickstart](QUICKSTART.md) - Step-by-step getting started guide
 - [Examples](examples/) - Example missions
 
-## Development
-
-### Setup
-
-```bash
-uv sync
-```
-
-### Run Tests
-
-```bash
-uv run pytest tests/ -v
-```
-
-### Lint and Format
-
-```bash
-uv run ruff check src/ tests/      # Check
-uv run ruff format src/ tests/     # Auto-format
-uv run mypy src/                   # Type check
-```
-
-### Building
-
-```bash
-uv build              # Build package
-uv pip install -e .   # Install editable
-```
-
-## Requirements
-
-- Python 3.11+
-- MAVSDK 3.10+
-- MAVLink-compatible autopilot (PX4, ArduPilot, etc.)
-
-## Dependencies
-
-See [pyproject.toml](pyproject.toml) for complete list:
-
-- `mavsdk` - Autopilot communication
-- `pydantic` - Configuration validation
-- `loguru` - Structured logging
-- `droneresponse-mathtools` - Coordinate transformations
-- `paho-mqtt` - MQTT telemetry (optional)
-
-## Contributing
-
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for:
-
-- How to fork and customize
-- Pull request process
-- Code style guide
-- Testing requirements
-
-## License
-
-See LICENSE file for details.
-
 ## Support
 
-- 📖 [API Documentation](API.md)
-- ❓ [FAQ](FAQ.md)
-- 🐛 [Report Issues](https://github.com/DroneResponse/sade-software-pilot/issues)
-- 💬 [Discussions](https://github.com/DroneResponse/sade-software-pilot/discussions)
+- [API Documentation](API.md)
+- [FAQ](FAQ.md)
+- [Report Issues](https://github.com/DroneResponse/sade-software-pilot/issues)
+- [Discussions](https://github.com/DroneResponse/sade-software-pilot/discussions)
 
 ---
 
-**Ready to build your custom mission?** Start with the [Quickstart Guide](QUICKSTART.md)!
+**Ready to build your custom mission?** Start with the [Quickstart
+Guide](QUICKSTART.md)!
