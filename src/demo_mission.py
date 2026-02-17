@@ -133,12 +133,10 @@ async def create_mission(
         raise
 
 
-async def run(listen_port: str, mavsdk_port: int, drone_id: int = 0 ) -> None:
+async def run(listen_port: str, mavsdk_port: int, drone_id: int = 0) -> None:
     """Main entry point for the mission."""
     drone = ResilientDrone(
-        listen_port=listen_port,
-        drone_id=drone_id,
-        mavsdk_port=mavsdk_port
+        listen_port=listen_port, drone_id=drone_id, mavsdk_port=mavsdk_port
     )
     await drone.connect()
 
@@ -195,8 +193,18 @@ async def run(listen_port: str, mavsdk_port: int, drone_id: int = 0 ) -> None:
 def main() -> None:
     """Mission entry point."""
     parser = argparse.ArgumentParser(description="Run a drone mission with MAVSDK")
-    parser.add_argument("--port", type=int, required=True, help="The UDP port on which to listen for incoming mavlink data.")
-    parser.add_argument("--mavsdk-port", type=int, required=True, help="Each instance of mavsdk needs its own unique private port for internal use.")
+    parser.add_argument(
+        "--port",
+        type=int,
+        required=True,
+        help="The UDP port on which to listen for incoming mavlink data.",
+    )
+    parser.add_argument(
+        "--mavsdk-port",
+        type=int,
+        required=True,
+        help="Each instance of mavsdk needs its own unique private port for internal use.",
+    )
     parser.add_argument("--drone_id", type=int, required=True, help="Drone ID (0 or 1)")
 
     args = parser.parse_args()
@@ -206,7 +214,9 @@ def main() -> None:
     mavsdk_port = args.mavsdk_port
 
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(run(listen_port=listen_port, drone_id=drone_id,mavsdk_port=mavsdk_port))
+    loop.run_until_complete(
+        run(listen_port=listen_port, drone_id=drone_id, mavsdk_port=mavsdk_port)
+    )
 
     log.info(f"All missions completed for drone {drone_id}")
 

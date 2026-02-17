@@ -2,6 +2,7 @@ set shell := ["bash", "-uc"]
 set dotenv-load := true
 
 alias pre-commit := hooks
+alias upgrade := update
 
 # Show available recipes
 default:
@@ -40,11 +41,16 @@ update:
 [group('test')]
 test *pytest_args:
     #!/usr/bin/env bash
-    if [ -d tests ]; then
-        uv run pytest tests/ -v --tb=short {{ pytest_args }}
-    else
+    set -euo pipefail
+    if [ ! -d tests ]; then
         echo "No tests directory found. Create tests/ to add tests."
         exit 1
+    fi
+    # Use direct python path to avoid uv run issues with pytest
+    if [ -f .venv/bin/python ]; then
+        .venv/bin/python -m pytest tests/ -v --tb=short {{ pytest_args }}
+    else
+        uv run python -m pytest tests/ -v --tb=short {{ pytest_args }}
     fi
 
 [doc('Run tests with coverage report')]
