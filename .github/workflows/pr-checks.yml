@@ -1,0 +1,57 @@
+name: PR Checks
+
+on:
+    pull_request:
+        branches:
+            - main
+            - master
+
+env:
+    python-version: "3.11"
+
+jobs:
+    lint-and-test:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v6
+
+            - name: Install uv
+              uses: astral-sh/setup-uv@v7
+              # https://github.com/astral-sh/setup-uv#inputs
+              with:
+                  version: "latest"
+
+            - name: Install dependencies
+              run: uv sync --frozen --python ${{ env.python-version }}
+
+            - name: Lint with ruff
+              run: uv run ruff check src/ tests/ --exit-zero
+
+            - name: Format check with ruff
+              run: uv run ruff format src/ tests/ --diff --check
+
+            - name: Type check with mypy
+              run: uv run mypy src/ --ignore-missing-imports
+
+            - name: Run pytest
+              run: uv run pytest tests/ -v --tb=short
+
+            - name: Build package
+              run: uv build
+
+    security-check:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v6
+
+            - name: Install uv
+              uses: astral-sh/setup-uv@v7
+              with:
+                  version: "latest"
+
+            - name: Install dependencies
+              run: uv sync --frozen --python ${{ env.python-version }}
+
+            - name: Check for common security issues
+              run: |
+                  uv run bandit -r src/ -ll || true
