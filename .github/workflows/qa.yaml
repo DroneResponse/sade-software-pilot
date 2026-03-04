@@ -2,13 +2,7 @@ name: quality-assurance
 on:
     workflow_dispatch:
     push:
-        branches:
-            - main
-            - master
     pull_request:
-        branches:
-            - main
-            - master
 
 env:
     python-version: "3.11"
