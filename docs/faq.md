@@ -184,7 +184,7 @@ The package must be installed in the virtual environment.
 
 Likely causes:
 
-1. **Different Python version** - Use Python 3.11+
+1. **Different Python version** - Use Python 3.14+
 2. **Missing dependencies** - Run `uv sync` after pulling
 3. **File paths** - Use relative paths, not absolute
 

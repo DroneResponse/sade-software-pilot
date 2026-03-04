@@ -11,7 +11,7 @@
     description = "Customizable autonomous drone missions for SADE simulations"
     name = "software-pilot"
     readme = "README.md"
-    requires-python = ">=3.11,<3.12"
+    requires-python = ">=3.14,<3.15"
     version = "0.1.0"
 
     [project.scripts]
@@ -25,7 +25,8 @@
     package = true
 
     [tool.uv.sources]
-        droneresponse-mathtools = { url = "https://mm-public-fileshare.s3.us-west-2.amazonaws.com/droneresponse_mathtools-0.3.0-py2.py3-none-any.whl" }
+        # https://github.com/DroneResponse/python-droneresponse-mathtools
+        droneresponse-mathtools = { url = "https://mm-public-fileshare.s3.us-west-2.amazonaws.com/droneresponse_mathtools-0.4.0-py2.py3-none-any.whl" }
 
 [dependency-groups]
     dev = [

@@ -2,7 +2,7 @@ exclude: "^docs/|devcontainer.json"
 default_stages: [pre-commit]
 
 default_language_version:
-    python: python3.11
+    python: python3.14
 
 repos:
     - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -20,7 +20,7 @@ repos:
           - id: detect-private-key
 
     - repo: https://github.com/astral-sh/ruff-pre-commit
-      rev: v0.15.1
+      rev: v0.15.4
       hooks:
           # Linter
           - id: ruff
