@@ -80,7 +80,7 @@ class ResilientDrone:
         max_retries: int = 10,
         retry_delay: int = 5,
         schema: str = "udpin://",
-        host: str = "0.0.0.0",
+        host: str = "0.0.0.0",  # nosec B104 - deliberately binds to all interfaces for MAVLink UDP
     ) -> None:
         self.drone_id = drone_id
         self._listen_port = listen_port
@@ -326,15 +326,19 @@ def _create_mission_item(
 
     https://mavsdk.mavlink.io/main/en/cpp/api_reference/structmavsdk_1_1_mission_1_1_mission_item.html#data-fields
     """
-    assert (
+    if not (
         MIN_LAT <= lat <= MAX_LAT or isclose(lat, MIN_LAT) or isclose(lat, MAX_LAT)
-    ), f"Latitude out of range: {lat}"
-    assert (
+    ):
+        msg = f"Latitude out of range: {lat}"
+        raise ValueError(msg)
+    if not (
         MIN_LON <= lon <= MAX_LON or isclose(lon, MIN_LON) or isclose(lon, MAX_LON)
-    ), f"Longitude out of range: {lon}"
-    assert speed >= MIN_SPEED or isclose(speed, MIN_SPEED), (
-        f"Speed must be non-negative: {speed}"
-    )
+    ):
+        msg = f"Longitude out of range: {lon}"
+        raise ValueError(msg)
+    if not (speed >= MIN_SPEED or isclose(speed, MIN_SPEED)):
+        msg = f"Speed must be non-negative: {speed}"
+        raise ValueError(msg)
     return MissionItem(
         latitude_deg=lat,
         longitude_deg=lon,
