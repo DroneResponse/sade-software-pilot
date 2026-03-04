@@ -1,5 +1,4 @@
-name: PR Checks
-
+name: quality-assurance
 on:
     workflow_dispatch:
     push:
@@ -16,33 +15,29 @@ env:
     UV_LINK_MODE: copy
 
 jobs:
-    lint-and-test:
+    qa-test-and-lint:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v6
 
             - name: Install uv
               uses: astral-sh/setup-uv@v7
-              # https://github.com/astral-sh/setup-uv#inputs
               with:
                   version: "latest"
 
-            - name: Install dependencies
-              run: uv sync --frozen --python ${{ env.python-version }}
+            - name: Install just on ubuntu
+              uses: extractions/setup-just@v3
 
-            - name: Lint with ruff
-              run: uv run ruff check src/ tests/ --exit-zero
+            - name: Running tests
+              run: just test
 
-            - name: Format check with ruff
-              run: uv run ruff format src/ tests/ --diff --check
-
-            - name: Run pytest
-              run: uv run pytest tests/ -v --tb=short
+            - name: Run pre-commit hooks
+              run: just pre-commit
 
             - name: Build package
-              run: uv build
+              run: just build
 
-    security-check:
+    qa-security:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v6
@@ -52,9 +47,9 @@ jobs:
               with:
                   version: "latest"
 
-            - name: Install dependencies
-              run: uv sync --frozen --python ${{ env.python-version }}
+            - name: Install just on ubuntu
+              uses: extractions/setup-just@v3
 
             - name: Check for common security issues
               run: |
-                  uv run bandit -r src/ -ll || true
+                  just security

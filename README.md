@@ -4,6 +4,12 @@ Customizable autonomous drone missions for SADE simulations.
 
 ## Quick Start
 
+### Install `just`
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to ~/.local/bin
+```
+
 ```bash
 # Clone this repository
 git clone https://github.com/DroneResponse/sade-software-pilot.git

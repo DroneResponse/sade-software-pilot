@@ -1,6 +1,13 @@
 set shell := ["bash", "-uc"]
 set dotenv-load := true
 
+# variables
+
+gwy_root := justfile_directory()
+git_root := gwy_root
+
+# aliases
+
 alias pre-commit := hooks
 alias upgrade := update
 
@@ -11,6 +18,56 @@ default:
 # ============================================================================
 # Development
 # ============================================================================
+
+[doc('Set up the development environment by checking dependencies, installing Python packages, and configuring pre-commit hooks')]
+[group('development')]
+dev-setup:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo -e "Setting up development environment\n"
+
+    # check for required system dependencies
+    echo "Checking system dependencies..."
+    missing_deps=()
+
+    if ! command -v uv &> /dev/null; then
+        missing_deps+=("uv (install from: https://docs.astral.sh/uv/getting-started/installation/)")
+    fi
+    if ! command -v just &> /dev/null; then
+        missing_deps+=("just (install from: https://github.com/casey/just#installation/)")
+    fi
+
+    # report missing dependencies
+    if [[ ${#missing_deps[@]} -gt 0 ]]; then
+        echo -e "\n\e[31m✗  Missing required system dependencies:\e[0m"
+        for dep in "${missing_deps[@]}"; do
+            echo "  - ${dep}"
+        done
+        echo -e "\n\e[33mInstall commands (run as needed for your system):\e[0m"
+        echo -e "  Ubuntu/Debian:"
+        echo "    sudo apt update"
+        echo "    sudo apt install -y docker.io docker-compose-v2 python3-dev libpq-dev postgresql-client"
+        echo "    curl -LsSf https://astral.sh/uv/install.sh | sh"
+        echo "    curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to ~/.local/bin"
+        echo -e "  RHEL/Fedora:"
+        echo "    sudo dnf install -y docker docker-compose-plugin python3-devel postgresql-devel postgresql"
+        echo "    curl -LsSf https://astral.sh/uv/install.sh | sh"
+        echo "    curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to ~/.local/bin"
+        echo ""
+        exit 1
+    fi
+
+    echo -e "\e[32m✓  All system dependencies found\e[0m\n"
+
+    # install python dependencies
+    echo "Installing Python dependencies..."
+    uv sync --dev --frozen
+
+    # install pre-commit hooks
+    echo "Installing pre-commit hooks..."
+    uv run pre-commit install
+
+    echo -e "\n\e[32m✓  Development environment setup complete\e[0m"
 
 [doc('Run the software pilot CLI with provided arguments')]
 [group('dev')]
@@ -36,6 +93,17 @@ update:
 # ============================================================================
 # Testing & Quality Assurance
 # ============================================================================
+
+[doc('Runs GitHub Actions locally using gh act. e.g. `just gact -j qa-test-and-lint`, `just gact -l`')]
+[group('development')]
+[group('qa')]
+gact *args:
+    @echo "Running GitHub Actions locally for {{ git_root }}"
+    cd "{{ git_root }}" && \
+        gh act \
+            --rm \
+            --workflows "{{ git_root }}/.github/workflows" \
+            {{ args }}
 
 [doc('Run all tests with pytest')]
 [group('test')]
@@ -89,11 +157,7 @@ hooks-staged *args:
 [group('qa')]
 security:
     @echo "Running bandit security checks..."
-    uv run bandit -r src/ -ll || true
-
-[doc('Run all quality checks (pre-commits, security)')]
-[group('qa')]
-check: hooks security
+    uv run bandit -r src/ -ll
 
 # ============================================================================
 # Build & Release
