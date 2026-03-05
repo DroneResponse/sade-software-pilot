@@ -75,7 +75,10 @@ Detailed instructions:
     # run pre-commit hooks for static analysis, linting, formatting, etc.
     just hooks
 
-    # run automated tests, so you don't need to wait minutes
+    # run security checks (e.g. check for vulnerable dependencies)
+    just security
+
+    # run automated tests, so you do not need to wait minutes
     # for a simulation run to catch some bug categories
     just test
     ```

@@ -148,7 +148,13 @@ install-hooks:
 [doc('Run pre-commit hooks on all files')]
 [group('qa')]
 hooks *args:
-    uv run prek run --all-files {{ args }}
+    #!/usr/bin/env bash
+    args=({{ args }})
+    if [ ${#args[@]} -eq 0 ]; then
+        uv run prek run --all-files
+    else
+        uv run prek run ${args[@]}
+    fi
 
 [doc('Run pre-commit hooks on staged files')]
 [group('qa')]

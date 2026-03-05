@@ -7,19 +7,25 @@ pilot.
 
 ```bash
 # 1. Fork the repo on GitHub
-# Navigate to https://github.com/DroneResponse/sade-software-pilot and click "Fork"
 
+# Using the GitHub CLI:
+gh repo fork --default-branch-only DroneResponse/sade-software-pilot --clone=true
+
+# OR:
+# 1. Navigate to https://github.com/DroneResponse/sade-software-pilot and click "Fork"
 # 2. Clone your fork
-git clone https://github.com/YOUR_USERNAME/sade-software-pilot.git
-cd sade-software-pilot
+#     git clone https://github.com/YOUR_USERNAME/sade-software-pilot.git
+#     cd sade-software-pilot
 
 # 3. Setup development environment
-uv sync
+# just dev-setup
 
 # 4. Customize your mission
 # edit the source files under src/software_pilot/
 
 # 5. Test locally
+just hooks
+just security
 just test
 
 # 6. Push and open a PR
@@ -27,45 +33,7 @@ git push origin feature/my-mission
 # Then open a PR at: https://github.com/DroneResponse/sade-software-pilot
 ```
 
-## Detailed Workflow
-
-### 1. Fork the Repository
-
-On GitHub:
-
-1. Navigate to
-   [DroneResponse/sade-software-pilot](https://github.com/DroneResponse/sade-software-pilot)
-2. Click the **Fork** button (top-right)
-3. Choose your personal account as the fork destination
-
-### 2. Clone Your Fork
-
-```bash
-git clone https://github.com/YOUR_USERNAME/sade-software-pilot.git
-cd sade-software-pilot
-```
-
-Replace `YOUR_USERNAME` with your GitHub username.
-
-### 3. Install Dependencies
-
-Using `uv` (the recommended Python package manager):
-
-```bash
-uv sync
-```
-
-This creates a virtual environment with all dependencies installed.
-
-### 4. Create a Feature Branch
-
-```bash
-git checkout -b feature/your-mission-name
-```
-
-**Naming convention:** `feature/` prefix for new missions, `fix/` for bug fixes
-
-### 5. Customize Your Mission
+## Customizing Your Mission
 
 Edit `src/software_pilot/mission.py` to implement your mission logic:
 
@@ -101,7 +69,7 @@ async def run_example_mission(config: PilotConfig, drone: ResilientDrone) -> Non
     await drone.action_land()
 ```
 
-### 6. Write Tests
+### Writing Tests
 
 Add tests for your mission in `tests/`:
 
@@ -121,17 +89,39 @@ async def test_mission_creation():
 Run tests:
 
 ```bash
-uv run pytest tests/
+just test
+
+# you can also pass any pytest arguments:
+just test -v --capture=no -k test_zone
+just test --cov=src --cov-fail-under=70
+just test --help
 ```
 
 ### 7. Quality checks
 
-Ensure code quality:
+These checks will standardize code style, and catch common bugs and potential problems
+before running a simulation.
+
+**This saves everyone's time in the review process, saves your time when running simulations, and prevents security issues.**
 
 ```bash
-# Run linter, formatter, type checking, etc
+# Run linter, formatter, type checking, etc on all files
 just hooks
+# or pass options
+just hooks -d src/software_pilot
+just hooks --last-commit --show-diff-on-failure
 # useful, as sometimes these will catch bugs before running the code
+
+# Note sometimes hooks will re-format files and apply automated fixes. You just need to
+# stage the modified files (git add ...) and try committing them again (git commit -m ...)
+# If you really need to skip a check, you can pass `--no-verify` to git commit, but the
+# issue will arise again when the PR is open, so we recommend fixing it when you have
+# the chance. Alternatively, you can add in-line ignores depending on what kind of
+# problem it is.
+
+# Run security checks
+just security
+
 ```
 
 ### 8. Commit and Push
@@ -149,8 +139,8 @@ On GitHub:
 1. Navigate to your fork
 2. Click **Pull Requests** → **New Pull Request**
 3. Select:
-   - **Base:** `main` (SADE original repository)
-   - **Compare:** `feature/your-mission-name` (your fork)
+    - **Base:** `main` (SADE original repository)
+    - **Compare:** `feature/your-mission-name` (your fork)
 4. Fill out the PR template.
 
 ### 10. Review Process
