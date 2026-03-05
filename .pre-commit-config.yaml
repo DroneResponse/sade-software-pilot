@@ -36,12 +36,11 @@ repos:
           - id: ruff-format
             args: [--config, "pyproject.toml"]
 
-    # - repo: https://github.com/igorshubovych/markdownlint-cli
-    #   rev: "v0.47.0"
-    #   hooks:
-    #       - id: markdownlint
-    #         args: ["-f"]
-    #         stages: [pre-commit]
+    - repo: https://github.com/rvben/rumdl-pre-commit
+      rev: "v0.1.41"
+      hooks:
+          - id: rumdl-fmt # auto-format and fail if issues remain
+            stages: [pre-commit]
 
     # - repo: https://github.com/facebook/pyrefly-pre-commit
     #   rev: 0.52.0

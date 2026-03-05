@@ -40,7 +40,7 @@ simulated drones in SADE. Each pilot:
 
 ## Repository Structure
 
-```
+```text
 src/software_pilot/
   __init__.py           # Package initialization
   cli.py                # Command-line interface
@@ -158,7 +158,7 @@ print(f"Flying drone {config.drone_id} at {config.custom_settings['speed_mps']} 
 - [API Reference](docs/api.md) - Complete API documentation
 - [Contributing Guide](docs/contributing.md) - How to contribute missions
 - [Quickstart](docs/quickstart.md) - Step-by-step getting started guide
-- [Examples](docs/examples/) - Example missions
+- [Examples](examples/) - Example missions
 
 ## Support
 

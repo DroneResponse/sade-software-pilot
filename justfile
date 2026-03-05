@@ -9,6 +9,7 @@ git_root := gwy_root
 # aliases
 
 alias pre-commit := hooks
+alias prek := hooks
 alias upgrade := update
 
 # Show available recipes
@@ -65,7 +66,8 @@ dev-setup:
 
     # install pre-commit hooks
     echo "Installing pre-commit hooks..."
-    uv run pre-commit install
+    uv run prek install -f
+    uv run prek install-hooks
 
     echo -e "\n\e[32m✓  Development environment setup complete\e[0m"
 
@@ -87,7 +89,7 @@ install-dev:
 [doc('Update pre-commit hooks and dependencies')]
 [group('qa')]
 update:
-    uv run pre-commit autoupdate
+    uv run prek autoupdate
     uv sync --upgrade
 
 # ============================================================================
@@ -141,17 +143,17 @@ serve-coverage:
 [doc('Install pre-commit hooks')]
 [group('qa')]
 install-hooks:
-    uv run pre-commit install
+    uv run prek install
 
 [doc('Run pre-commit hooks on all files')]
 [group('qa')]
 hooks *args:
-    uv run pre-commit run --all-files {{ args }}
+    uv run prek run --all-files {{ args }}
 
 [doc('Run pre-commit hooks on staged files')]
 [group('qa')]
 hooks-staged *args:
-    uv run pre-commit run {{ args }}
+    uv run prek run {{ args }}
 
 [doc('Run security checks with bandit')]
 [group('qa')]
