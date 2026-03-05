@@ -95,6 +95,9 @@ just test
 just test -v --capture=no -k test_zone
 just test --cov=src --cov-fail-under=70
 just test --help
+
+# Run security checks
+just security
 ```
 
 ### 7. Quality checks
@@ -121,13 +124,13 @@ just hooks --last-commit --show-diff-on-failure
 
 # Run security checks
 just security
-
 ```
 
 ### 8. Commit and Push
 
 ```bash
 git add src/ tests/
+# example with commit message
 git commit -m "Add search-pattern mission for autonomous grid search"
 git push origin feature/your-mission-name
 ```
@@ -147,35 +150,37 @@ On GitHub:
 
 A SADE team member will:
 
-- **Review** your mission logic, API usage, and code quality
-- **Comment** on any questions or suggestions
+- **Request** an automated review from an AI agent, highlight points that need fixing
+- **Review** code quality and security manually
+- **Request** changes, ask questions, or suggest improvements (marked with `[nit]`)
 - **Approve** once everything looks good
 - **Merge** to a custom branch: `contrib/{username}/{mission-name}`
 
 **What we look for:**
 
-- ✅ Mission logic is sound (waypoints within bounds, realistic flight profiles)
-- ✅ Correct use of SADE APIs (`ResilientDrone`, `request_sade_zone_entry()`)
-- ✅ No security issues (safe file I/O, no shell invocation)
-- ✅ Comprehensive tests (this will shorten the feedback loop for you, as it is faster to
-  run tests than to submit a simulation)
+- ✅ No security issues: safe file I/O, no shell invocation, no obfuscated code, limited
+    remote calls, etc.
+- ✅ Comprehensive tests: this will shorten the feedback loop for you, as it is faster
+    to run tests than to submit a simulation.
 
 ### 11. Use Your Custom Pilot
 
-Once approved and merged, reference your pilot in simulation configs:
+Once approved and merged, the simulation config will look like this:
+
+_Payload subject to change._
 
 ```json
 {
-  "pilot": {
-    "repo_url": "https://github.com/YOUR_USERNAME/sade-software-pilot",
-    "repo_branch": "contrib/YOUR_USERNAME/mission-name",
-    "custom_settings": {
-      "grid_size_m": 100,
-      "search_altitude_m": 150
-    }
-  },
-  "drones": [ ... ],
-  "environment": [ ... ]
+    "pilot": {
+        "repo_url": "https://github.com/YOUR_USERNAME/sade-software-pilot",
+        "repo_branch": "contrib/YOUR_USERNAME/mission-name",
+        "custom_settings": {
+            "grid_size_m": 100,
+            "search_altitude_m": 150
+        }
+    },
+    "drones": [ ... ],
+    "environment": [ ... ]
 }
 ```
 
@@ -189,14 +194,16 @@ Main interface to drone operations.
 
 **Methods:**
 
-- `await drone.connect()` - Connect to autopilot
-- `await drone.fetch_drone_position()` - Get lat/lon/alt
-- `await drone.execute_mission(mission_steps)` - Upload and execute waypoints
-- `await drone.action_arm()` - Arm the drone
-- `await drone.action_takeoff()` - Take off
-- `await drone.action_land()` - Land
-- `await drone.telemetry_position()` - Stream live position
-- `await drone.telemetry_health()` - Stream health status
+| Method                                       | Description                    |
+| -------------------------------------------- | ------------------------------ |
+| `await drone.connect()`                      | Connects to autopilot          |
+| `await drone.fetch_drone_position()`         | Gets lat/lon/alt               |
+| `await drone.execute_mission(mission_steps)` | Uploads and executes waypoints |
+| `await drone.action_arm()`                   | Arms the drone                 |
+| `await drone.action_takeoff()`               | Takes off                      |
+| `await drone.action_land()`                  | Lands                          |
+| `await drone.telemetry_position()`           | Streams live position          |
+| `await drone.telemetry_health()`             | Streams health status          |
 
 #### `MissionStep`
 
@@ -321,8 +328,8 @@ uv run pytest tests/ -v
 
 ## Getting Help
 
-- **API Questions:** See [API.md](API.md)
-- **SADE Concepts:** See [QUICKSTART.md](QUICKSTART.md)
+- **API Questions:** See [API.md](api.md)
+- **SADE Concepts:** See [QUICKSTART.md](quickstart.md)
 - **Examples:** Browse [examples/](examples/)
 - **Issues:** Check [GitHub
   Issues](https://github.com/DroneResponse/sade-software-pilot/issues)
