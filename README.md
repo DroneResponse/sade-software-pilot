@@ -2,31 +2,91 @@
 
 Customizable autonomous drone missions for SADE simulations.
 
+- [SADE Software Pilots](#sade-software-pilots)
+    - [Quick Start](#quick-start)
+    - [What is a Software Pilot?](#what-is-a-software-pilot)
+    - [Repository Structure](#repository-structure)
+    - [API Quick Reference](#api-quick-reference)
+        - [DroneOperations](#droneoperations)
+        - [SADE Zone Access](#sade-zone-access)
+        - [Configuration](#configuration)
+    - [Documentation](#documentation)
+    - [Support](#support)
+
 ## Quick Start
 
-### Install `just`
+The high-level flow looks like this:
 
-```bash
-curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to ~/.local/bin
-```
+1. **Fork the repository** to your GitHub account; clone it locally
+2. **Create a feature branch**: `git switch -c feature/my-mission`; feel free to
+    name it something more descriptive.
+3. **Edit mission logic**: Modify `src/software_pilot/mission.py`
+4. **Test locally**: `just hooks` and `just test`
+    This is highly recommended for reducing the feedback loop from minutes or hours (in
+    case of human approval) to seconds. Write tests that cover your changes before
+    running a simulation with them. See `tests/` for examples.
+5. **Push and open a PR**: `git push origin feature/my-mission`; open a PR to
+    `DroneResponse/sade-software-pilot` base repository, targeting
+    `contrib/{username}/my-mission`
+6. **Wait for approval**: SADE team reviews and merges to
+    `contrib/{username}/my-mission`
+7. **Run in SADE**: Configure a simulation in <https://sade.crc.nd.edu> pointing to the commit
+    hash of your merged PR branch; then start the simulation.
 
-```bash
-# Clone this repository
-git clone https://github.com/DroneResponse/sade-software-pilot.git
-cd sade-software-pilot
+Detailed instructions:
 
-# Install dependencies
-uv sync
+0. Fork this repository
 
-# Customize your mission; see:
-# src/software_pilot/mission.py
+    ```bash
+    gh repo fork --default-branch-only DroneResponse/sade-software-pilot --clone=true
+    # or manually fork on GitHub and clone it
+    cd sade-software-pilot
+    ```
 
-# Test locally
-just test
+1. Install `just` and `uv`
 
-# Use in SADE simulation
-sade_wr submit --sim-config my-config.json
-```
+    ```bash
+    cargo install just
+    # OR
+    curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to ~/.local/bin
+    ```
+
+    ```bash
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    # OR
+    cargo install --locked uv
+    ```
+
+    Alternative installation methods at <https://docs.astral.sh/uv/getting-started/installation/>
+
+2. Prepare the development environment
+
+    ```bash
+    just dev-setup
+    ```
+
+3. Customize your mission; see [`src/software_pilot/mission.py`](./src/software_pilot/mission.py).
+
+    Skip this step if you just want to run the example mission as-is.
+
+4. Test locally
+
+    ```bash
+    # run pre-commit hooks for static analysis, linting, formatting, etc.
+    just hooks
+
+    # run automated tests, so you don't need to wait minutes
+    # for a simulation run to catch some bug categories
+    just test
+    ```
+
+5. Use in SADE simulation.
+
+    Once your code is ready, open a PR to our base repository. Please see
+    [docs/contributing.md](docs/contributing.md) for more details.
+
+6. Once merged, configure a simulation in <https://sade.crc.nd.edu> pointing to the
+    commit hash of your merged PR branch; then start the simulation.
 
 ## What is a Software Pilot?
 
@@ -57,38 +117,6 @@ tests/
 .github/workflows/
   pr-checks.yml         # Automated linting and testing
 ```
-
-## Usage
-
-### As the Template Repository
-
-Start with the [official
-template](https://github.com/DroneResponse/sade-software-pilot.git).
-
-### 2. Customize for Your Mission
-
-1. **Fork the repository** to your GitHub account
-2. **Create a feature branch**: `git switch -c feature/my-mission`
-3. **Edit mission logic**: Modify `src/software_pilot/mission.py`
-4. **Test locally**: `just test`
-5. **Push and open a PR**: `git push origin feature/my-mission`
-6. **Wait for approval**: SADE team reviews and merges to
-   `contrib/{username}/my-mission`
-
-### 3. Run checks
-
-```bash
-# run tests to make sure your code works as expected before having to start a simulation run
-just test
-
-# linting, formatting, type checking, etc.
-just hooks
-```
-
-### 4. Submitting your software pilot
-
-When it looks good, you can open a PR to our base repository. Please see
-[docs/contributing.md](docs/contributing.md) for more details.
 
 ## API Quick Reference
 
