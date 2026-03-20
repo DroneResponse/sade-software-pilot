@@ -200,7 +200,7 @@ async def run(
             await position_task  # wait for the task to finish
 
 
-def main() -> None:
+async def main() -> None:
     """Mission entry point."""
     parser = argparse.ArgumentParser(description="Run a drone mission with MAVSDK")
     parser.add_argument(
@@ -229,18 +229,15 @@ def main() -> None:
 
     params = get_params_based_on_fcu_id(drone_id, param_files_path)
 
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(
-        run(
-            listen_port=listen_port,
-            drone_id=drone_id,
-            mavsdk_port=mavsdk_port,
-            params=params,
-        )
+    await run(
+        listen_port=listen_port,
+        drone_id=drone_id,
+        mavsdk_port=mavsdk_port,
+        params=params,
     )
 
     log.info(f"All missions completed for drone {drone_id}")
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
