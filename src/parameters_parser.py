@@ -12,4 +12,4 @@ def get_params_based_on_fcu_id(fcu_id: str, file_path: Path) -> dict[Any, Any]:
     params = {}
     with open(file_path, "r") as file_buffer:
         params = json.load(file_buffer)
-    return params.get(fcu_id, {})
+    return params.get(f"{fcu_id}", params.get(fcu_id, {}))
