@@ -1,0 +1,25 @@
+name: Create Branch
+on:
+  workflow_dispatch:
+    inputs:
+      branch_name:
+        description: 'Name of the new branch'
+        required: true
+        type: string
+
+jobs:
+  create-branch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Crucial for pushing the new branch
+    
+    steps:
+      - name: Checkout master
+        uses: actions/checkout@v4
+        with:
+          ref: master
+
+      - name: Create and Push Branch
+        run: |
+          git checkout -b "${{ github.event.inputs.branch_name }}"
+          git push origin "${{ github.event.inputs.branch_name }}"
