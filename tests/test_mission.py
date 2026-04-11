@@ -4,8 +4,8 @@ import asyncio
 from unittest.mock import MagicMock
 
 import pytest
-from software_pilot.mission import create_example_mission
-from software_pilot.uav import MissionStep
+from src.software_pilot.mission import create_example_mission
+from src.software_pilot.uav import MissionStep
 
 
 class TestCreateExampleMission:

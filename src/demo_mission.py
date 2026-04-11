@@ -2,6 +2,7 @@
 
 import argparse
 import asyncio
+import random
 from pathlib import Path
 from typing import Any
 
@@ -13,8 +14,6 @@ from .parameters_parser import get_params_based_on_fcu_id
 from .uav import NED
 from .uav import MissionStep
 from .uav import ResilientDrone
-from .zones import SadeZoneLease
-from .zones import request_sade_zone_entry
 
 install(show_locals=True)
 
@@ -37,6 +36,16 @@ async def log_position_periodically(
         await asyncio.sleep(delay_sec)
 
 
+async def check_sade_zones_periodically(
+    drone: ResilientDrone,
+    cancel_event: asyncio.Event,
+    delay_sec: int = 1,
+) -> None:
+    while not cancel_event.is_set():
+        await drone.check_inside_sade_zones()
+        await asyncio.sleep(delay_sec)
+
+
 async def create_mission(
     drone: ResilientDrone,
     home: Lla,
@@ -45,14 +54,14 @@ async def create_mission(
 
     # local vars
     speed_mps = 20.0
-    cruising_altitude = 50
-    clicks = 100  # defining click as 100m;
+    if drone.drone_id > 15:
+        cruising_altitude = 30
+    else:
+        cruising_altitude = 70
+    clicks = 40  # defining click as 100m;
     speed_mps = 20.0
-    startup_wait = 10
 
-    # the "click" unit makes it easier to scale the mission up or down
-
-    _mission_script_outsize_sz = [
+    take_off = [
         MissionStep(
             short_name="takeoff",
             description="Take off from home position",
@@ -60,45 +69,46 @@ async def create_mission(
             home_alt=home.altitude,
             speed=speed_mps,
             home=home,
-        ),
+        )
+    ]
+
+    random_mission = [
         MissionStep(
-            short_name="request_sz",
-            description="Go 1 click west and ask for SADE zone access",
-            ned=NED(north=0, east=-1 * clicks, down=-cruising_altitude),
+            short_name="go_north",
+            description="Going 2 clicks north",
+            ned=NED(north=2 * clicks, east=0, down=-cruising_altitude),
             home_alt=home.altitude,
             speed=speed_mps,
             home=home,
         ),
-    ]
-
-    _mission_script_sz_granted = [
         MissionStep(
-            short_name="enter_sz",
-            description="SADE Zone access granted; Going one more click west",
+            short_name="go_east",
+            description="Going 2 clicks east",
+            ned=NED(north=0, east=2 * clicks, down=-cruising_altitude),
+            home_alt=home.altitude,
+            speed=speed_mps,
+            home=home,
+        ),
+        MissionStep(
+            short_name="go_west",
+            description="Going 2 clicks west",
             ned=NED(north=0, east=-2 * clicks, down=-cruising_altitude),
             home_alt=home.altitude,
             speed=speed_mps,
             home=home,
         ),
+        # Northwest
         MissionStep(
-            short_name="go_north",
-            description="Go two clicks north",
+            short_name="go_northwest",
+            description="Going 2 clicks northwest",
             ned=NED(north=2 * clicks, east=-2 * clicks, down=-cruising_altitude),
-            home_alt=home.altitude,
-            speed=speed_mps,
-            home=home,
-        ),
-        MissionStep(
-            short_name="return",
-            description="Returning to origin",
-            ned=NED(north=0, east=0, down=-cruising_altitude),
             home_alt=home.altitude,
             speed=speed_mps,
             home=home,
         ),
     ]
 
-    _mission_script_return_to_base = [
+    return_to_base_home = [
         MissionStep(
             short_name="return_to_base",
             description="SADE Zone access denied; Returning home",
@@ -109,31 +119,18 @@ async def create_mission(
         ),
     ]
 
-    _mission_script_sz_denied = _mission_script_return_to_base
+    drone.set_home_mission(return_to_base_home)
 
-    sleep_time = startup_wait * drone.drone_id + 60
-    log.info(f"Drone {drone.drone_id} waiting {sleep_time} seconds before starting")
-    await asyncio.sleep(sleep_time)
-    await drone.execute_mission(mission_steps=_mission_script_outsize_sz)
-    log.info("Waiting for SADE Zone access...")
-    try:
-        sade_zone_lease: SadeZoneLease | None = request_sade_zone_entry(
-            drone=drone,
-            emulate_wait=True,
-        )
-        if sade_zone_lease:
-            drone.log(
-                f"SADE Zone access granted until {sade_zone_lease.expiration_time}"
-            )
-            await drone.execute_mission(mission_steps=_mission_script_sz_granted)
-        else:
-            drone.log_warning("SADE Zone access denied; returning to base.")
-            await drone.execute_mission(mission_steps=_mission_script_sz_denied)
-    except Exception as err:
-        # always return to base
-        log.error(err)
-        await drone.execute_mission(mission_steps=_mission_script_return_to_base)
-        raise
+    log.info("Drone is starting the mission, taking off!!")
+    await asyncio.sleep(1)
+    await drone.execute_mission(mission_steps=take_off)
+    while not drone.get_set_home():
+        await asyncio.sleep(1)
+        # ruff: noqa: S311 - Not used for cryptographic purposes
+        choiced_mission = random.choices(random_mission, k=3)
+        await drone.execute_mission(mission_steps=choiced_mission)
+    drone.set_set_home(False)
+    await drone.execute_mission(mission_steps=return_to_base_home)
 
 
 async def run(
@@ -171,11 +168,14 @@ async def run(
 
     await drone.action_arm()
     await drone.action_takeoff()
-    after_takeoff_delay_sec = 5
+    after_takeoff_delay_sec = 2
     await asyncio.sleep(after_takeoff_delay_sec)
 
     # start coroutine to print position every N seconds
     should_log_position_periodically = False
+    should_drone_check_sade_zone_periodically = True
+    cancel_sade_zone_task = None
+    sade_zone_task = None
     cancel_position_task = None
     position_task = None
 
@@ -188,11 +188,27 @@ async def run(
                 delay_sec=5,
             ),
         )
+
+    if should_drone_check_sade_zone_periodically:
+        cancel_sade_zone_task = asyncio.Event()
+        sade_zone_task = asyncio.create_task(
+            check_sade_zones_periodically(
+                drone=drone,
+                cancel_event=cancel_sade_zone_task,  # signals task cancellation
+                delay_sec=1,
+            ),
+        )
+
     await create_mission(
         drone=drone,
         home=home,
     )
     await drone.action_land()
+
+    if cancel_sade_zone_task:
+        cancel_sade_zone_task.set()
+        if sade_zone_task:
+            await sade_zone_task  # wait for the task to finish
 
     if cancel_position_task:
         cancel_position_task.set()
@@ -213,7 +229,7 @@ async def main() -> None:
         "--mavsdk-port",
         type=int,
         required=True,
-        help="Each instance of mavsdk needs its own unique private port for internal use.",
+        help="Each instance of MAVSDK needs its own unique priv port for internal use.",
     )
     parser.add_argument("--drone_id", type=int, required=True, help="Drone ID (0 or 1)")
     parser.add_argument(

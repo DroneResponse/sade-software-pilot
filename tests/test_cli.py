@@ -7,7 +7,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from software_pilot import cli
+from src.software_pilot import cli
 
 
 class TestParseArgs:
