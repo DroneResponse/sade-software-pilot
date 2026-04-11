@@ -4,7 +4,7 @@ from datetime import UTC
 from datetime import datetime
 from datetime import timedelta
 
-from software_pilot.zones import SadeZoneLease
+from src.software_pilot.zones import SadeZoneLease
 
 
 class TestSadeZoneLease:

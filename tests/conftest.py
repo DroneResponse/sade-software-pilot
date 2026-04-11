@@ -5,7 +5,7 @@ import tempfile
 from pathlib import Path
 
 import pytest
-from software_pilot.config import PilotConfig
+from src.software_pilot.config import PilotConfig
 
 
 @pytest.fixture

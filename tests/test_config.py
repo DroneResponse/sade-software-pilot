@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
-from software_pilot.config import PilotConfig
+from src.software_pilot.config import PilotConfig
 
 
 class TestPilotConfigBasic:
@@ -154,13 +154,3 @@ class TestPilotConfigDefaults:
         """Test that zone config defaults to None."""
         config = PilotConfig(drone_id=0)
         assert config.sade_zone_config_path is None
-
-
-class TestPilotConfigBackwardCompatibility:
-    """Test backward compatibility aliases."""
-
-    def test_pilot_settings_alias(self) -> None:
-        """Test that PilotSettings is an alias for PilotConfig."""
-        from software_pilot.config import PilotSettings
-
-        assert PilotSettings is PilotConfig
