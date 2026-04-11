@@ -3,11 +3,14 @@
 import argparse
 import asyncio
 import random
+from pathlib import Path
+from typing import Any
 
 from droneresponse_mathtools import Lla
 from loguru import logger as log
 from rich.traceback import install
 
+from .parameters_parser import get_params_based_on_fcu_id
 from .uav import NED
 from .uav import MissionStep
 from .uav import ResilientDrone
@@ -130,12 +133,19 @@ async def create_mission(
     await drone.execute_mission(mission_steps=return_to_base_home)
 
 
-async def run(listen_port: str, mavsdk_port: int, drone_id: int = 0) -> None:
+async def run(
+    listen_port: str,
+    mavsdk_port: int,
+    drone_id: int = 0,
+    params: dict[Any, Any] = {},
+) -> None:
     """Main entry point for the mission."""
     drone = ResilientDrone(
         listen_port=listen_port, drone_id=drone_id, mavsdk_port=mavsdk_port
     )
     await drone.connect()
+
+    log.info(f"The Drone ID is {drone_id},  is ingested with params {params}")
 
     log.info("Waiting for drone to have a global position estimate…")
     try:
@@ -206,7 +216,7 @@ async def run(listen_port: str, mavsdk_port: int, drone_id: int = 0) -> None:
             await position_task  # wait for the task to finish
 
 
-def main() -> None:
+async def main() -> None:
     """Mission entry point."""
     parser = argparse.ArgumentParser(description="Run a drone mission with MAVSDK")
     parser.add_argument(
@@ -222,20 +232,28 @@ def main() -> None:
         help="Each instance of MAVSDK needs its own unique priv port for internal use.",
     )
     parser.add_argument("--drone_id", type=int, required=True, help="Drone ID (0 or 1)")
+    parser.add_argument(
+        "--params-file", type=Path, required=True, help="Path to the parameters file"
+    )
 
     args = parser.parse_args()
 
     listen_port = args.port
     drone_id = args.drone_id
     mavsdk_port = args.mavsdk_port
+    param_files_path = args.params_file
 
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(
-        run(listen_port=listen_port, drone_id=drone_id, mavsdk_port=mavsdk_port)
+    params = get_params_based_on_fcu_id(drone_id, param_files_path)
+
+    await run(
+        listen_port=listen_port,
+        drone_id=drone_id,
+        mavsdk_port=mavsdk_port,
+        params=params,
     )
 
     log.info(f"All missions completed for drone {drone_id}")
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

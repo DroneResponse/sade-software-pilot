@@ -1,3 +1,5 @@
+# Pull Request Template for SADE User Missions
+
 ## Mission Description
 
 <!-- Briefly describe what this pilot does and its intended use case -->
@@ -59,7 +61,7 @@ After merge, this pilot will be available as:
 
 ## Checklist
 
-- [ ] I have read [CONTRIBUTING.md](CONTRIBUTING.md)
+- [ ] I have read [contributing.md](../docs/contributing.md)
 - [ ] No security issues (no unsafe shell invocation, safe file I/O)
 - [ ] No secrets or credentials in code
 - [ ] Code follows the style guide

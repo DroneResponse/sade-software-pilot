@@ -1,0 +1,49 @@
+name: quality-assurance
+on:
+    workflow_dispatch:
+    push:
+    pull_request:
+
+env:
+    python-version: "3.14"
+    UV_LINK_MODE: copy
+
+jobs:
+    qa-test-and-lint:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v6
+
+            - name: Install uv
+              uses: astral-sh/setup-uv@v7
+              with:
+                  version: "latest"
+
+            - name: Install just on ubuntu
+              uses: extractions/setup-just@v3
+
+            - name: Running tests
+              run: just test
+
+            - name: Run pre-commit hooks
+              run: just pre-commit
+
+            - name: Build package
+              run: just build
+
+    qa-security:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v6
+
+            - name: Install uv
+              uses: astral-sh/setup-uv@v7
+              with:
+                  version: "latest"
+
+            - name: Install just on ubuntu
+              uses: extractions/setup-just@v3
+
+            - name: Check for common security issues
+              run: |
+                  just security
