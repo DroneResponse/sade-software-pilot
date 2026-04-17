@@ -80,6 +80,7 @@ Examples:
 
 def main() -> int:
     """Main entry point for the software pilot CLI."""
+    return 0
     args = parse_args()
 
     # Configure logging
