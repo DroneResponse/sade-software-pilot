@@ -10,11 +10,8 @@ from loguru import logger as log
 from rich.traceback import install
 
 from .parameters_parser import get_params_based_on_fcu_id
-from .uav import NED
-from .uav import MissionStep
-from .uav import ResilientDrone
-from .zones import SadeZoneLease
-from .zones import request_sade_zone_entry
+from .uav import NED, MissionStep, ResilientDrone
+from .zones import SadeZoneLease, request_sade_zone_entry
 
 install(show_locals=True)
 
@@ -202,7 +199,6 @@ async def run(
 
 async def main() -> None:
     """Mission entry point."""
-    return 0
     parser = argparse.ArgumentParser(description="Run a drone mission with MAVSDK")
     parser.add_argument(
         "--port",
@@ -228,14 +224,7 @@ async def main() -> None:
     mavsdk_port = args.mavsdk_port
     param_files_path = args.params_file
 
-    params = get_params_based_on_fcu_id(drone_id, param_files_path)
-
-    await run(
-        listen_port=listen_port,
-        drone_id=drone_id,
-        mavsdk_port=mavsdk_port,
-        params=params,
-    )
+    log.info("we are doing nothing!!")
 
     log.info(f"All missions completed for drone {drone_id}")
 
