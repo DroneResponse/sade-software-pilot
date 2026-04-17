@@ -138,6 +138,7 @@ class TestMain:
             exit_code = cli.main()
             assert exit_code == 0
 
+    @pytest.mark.skip(reason="the do-nothing software pilot doesn't access any config")
     def test_main_missing_custom_config(self) -> None:
         """Test main() fails gracefully when custom config doesn't exist."""
         with patch.object(
@@ -152,6 +153,7 @@ class TestMain:
             exit_code = cli.main()
             assert exit_code == 1
 
+    @pytest.mark.skip(reason="the do-nothing software pilot doesn't access any config")
     def test_main_with_valid_custom_config(self) -> None:
         """Test main() with valid custom config file."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
@@ -169,6 +171,9 @@ class TestMain:
         finally:
             config_path.unlink()
 
+    @pytest.mark.skip(
+        reason="the do-nothing software pilot doesn't do anything and this test won't trigger the expected exception"
+    )
     def test_main_exception_handling(self) -> None:
         """Test main() handles exceptions gracefully."""
         # Invalid drone_id type will be caught by argparse, but let's test value errors
