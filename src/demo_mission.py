@@ -202,6 +202,7 @@ async def run(
 
 async def main() -> None:
     """Mission entry point."""
+    return 0
     parser = argparse.ArgumentParser(description="Run a drone mission with MAVSDK")
     parser.add_argument(
         "--port",
