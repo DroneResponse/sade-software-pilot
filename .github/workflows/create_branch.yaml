@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write  # Crucial for pushing the new branch
-    
+
     steps:
       - name: Checkout master
         uses: actions/checkout@v4
