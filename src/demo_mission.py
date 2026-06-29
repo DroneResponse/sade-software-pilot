@@ -1,20 +1,15 @@
 """Demo mission for SADE drones."""
 
-import argparse
 import asyncio
-from pathlib import Path
 from typing import Any
 
 from droneresponse_mathtools import Lla
 from loguru import logger as log
 from rich.traceback import install
 
-from .parameters_parser import get_params_based_on_fcu_id
-from .uav import NED
-from .uav import MissionStep
-from .uav import ResilientDrone
-from .zones import SadeZoneLease
-from .zones import request_sade_zone_entry
+from .cli_config import parse_args_from_cli
+from .parameters_parser import FlightPath, get_params_based_on_fcu_id, parse_flight_path
+from .uav import NED, LatLongAlt, MissionStep, ResilientDrone
 
 install(show_locals=True)
 
@@ -46,57 +41,14 @@ async def create_mission(
     # local vars
     speed_mps = 20.0
     cruising_altitude = 50
-    clicks = 100  # defining click as 100m;
     speed_mps = 20.0
-    startup_wait = 10
+    startup_wait = 5
+
+    flight_path: dict[str, FlightPath] = parse_flight_path()
+    drone_flight_path: FlightPath = flight_path[str(drone.drone_id)]
 
     # the "click" unit makes it easier to scale the mission up or down
-
-    _mission_script_outsize_sz = [
-        MissionStep(
-            short_name="takeoff",
-            description="Take off from home position",
-            ned=NED(north=0, east=0, down=-cruising_altitude),
-            home_alt=home.altitude,
-            speed=speed_mps,
-            home=home,
-        ),
-        MissionStep(
-            short_name="request_sz",
-            description="Go 1 click west and ask for SADE zone access",
-            ned=NED(north=0, east=-1 * clicks, down=-cruising_altitude),
-            home_alt=home.altitude,
-            speed=speed_mps,
-            home=home,
-        ),
-    ]
-
-    _mission_script_sz_granted = [
-        MissionStep(
-            short_name="enter_sz",
-            description="SADE Zone access granted; Going one more click west",
-            ned=NED(north=0, east=-2 * clicks, down=-cruising_altitude),
-            home_alt=home.altitude,
-            speed=speed_mps,
-            home=home,
-        ),
-        MissionStep(
-            short_name="go_north",
-            description="Go two clicks north",
-            ned=NED(north=2 * clicks, east=-2 * clicks, down=-cruising_altitude),
-            home_alt=home.altitude,
-            speed=speed_mps,
-            home=home,
-        ),
-        MissionStep(
-            short_name="return",
-            description="Returning to origin",
-            ned=NED(north=0, east=0, down=-cruising_altitude),
-            home_alt=home.altitude,
-            speed=speed_mps,
-            home=home,
-        ),
-    ]
+    log.info(f"Drone flight path: {drone_flight_path}")
 
     _mission_script_return_to_base = [
         MissionStep(
@@ -106,29 +58,43 @@ async def create_mission(
             home_alt=home.altitude,
             speed=speed_mps,
             home=home,
+            move_lla=None,
         ),
     ]
 
-    _mission_script_sz_denied = _mission_script_return_to_base
+    _mission_scripts = []
 
-    sleep_time = startup_wait * drone.drone_id + 60
+    for step in drone_flight_path.flight_path:
+        if step.lat is None and step.lon is None:
+            mission_step = MissionStep(
+                short_name="takeoff",
+                description="Take off from home position",
+                ned=NED(north=0, east=0, down=-step.ele),
+                home_alt=home.altitude,
+                speed=speed_mps,
+                home=home,
+                move_lla=None,
+            )
+        else:
+            mission_step = MissionStep(
+                short_name=step.short_name,
+                description=step.description,
+                ned=None,
+                home_alt=home.altitude,
+                speed=speed_mps,
+                home=home,
+                move_lla=LatLongAlt(
+                    lat=step.lat, lon=step.lon, alt=step.ele + cruising_altitude
+                ),
+            )
+        _mission_scripts.append(mission_step)
+
+    sleep_time = startup_wait
     log.info(f"Drone {drone.drone_id} waiting {sleep_time} seconds before starting")
     await asyncio.sleep(sleep_time)
-    await drone.execute_mission(mission_steps=_mission_script_outsize_sz)
-    log.info("Waiting for SADE Zone access...")
+
     try:
-        sade_zone_lease: SadeZoneLease | None = request_sade_zone_entry(
-            drone=drone,
-            emulate_wait=True,
-        )
-        if sade_zone_lease:
-            drone.log(
-                f"SADE Zone access granted until {sade_zone_lease.expiration_time}"
-            )
-            await drone.execute_mission(mission_steps=_mission_script_sz_granted)
-        else:
-            drone.log_warning("SADE Zone access denied; returning to base.")
-            await drone.execute_mission(mission_steps=_mission_script_sz_denied)
+        await drone.execute_mission(mission_steps=_mission_scripts)
     except Exception as err:
         # always return to base
         log.error(err)
@@ -137,9 +103,9 @@ async def create_mission(
 
 
 async def run(
-    listen_port: str,
+    listen_port: int,
     mavsdk_port: int,
-    drone_id: int = 0,
+    drone_id: int = 1,
     params: dict[Any, Any] = {},
 ) -> None:
     """Main entry point for the mission."""
@@ -171,7 +137,7 @@ async def run(
 
     await drone.action_arm()
     await drone.action_takeoff()
-    after_takeoff_delay_sec = 5
+    after_takeoff_delay_sec = 1
     await asyncio.sleep(after_takeoff_delay_sec)
 
     # start coroutine to print position every N seconds
@@ -188,6 +154,7 @@ async def run(
                 delay_sec=5,
             ),
         )
+
     await create_mission(
         drone=drone,
         home=home,
@@ -202,30 +169,12 @@ async def run(
 
 async def main() -> None:
     """Mission entry point."""
-    parser = argparse.ArgumentParser(description="Run a drone mission with MAVSDK")
-    parser.add_argument(
-        "--port",
-        type=int,
-        required=True,
-        help="The UDP port on which to listen for incoming mavlink data.",
-    )
-    parser.add_argument(
-        "--mavsdk-port",
-        type=int,
-        required=True,
-        help="Each instance of mavsdk needs its own unique private port for internal use.",
-    )
-    parser.add_argument("--drone_id", type=int, required=True, help="Drone ID (0 or 1)")
-    parser.add_argument(
-        "--params-file", type=Path, required=True, help="Path to the parameters file"
-    )
 
-    args = parser.parse_args()
-
-    listen_port = args.port
-    drone_id = args.drone_id
-    mavsdk_port = args.mavsdk_port
-    param_files_path = args.params_file
+    config = parse_args_from_cli()
+    listen_port = config.listen_port
+    drone_id = config.drone_id
+    mavsdk_port = config.mavsdk_port
+    param_files_path = config.param_files_path
 
     params = get_params_based_on_fcu_id(drone_id, param_files_path)
 

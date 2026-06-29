@@ -4,16 +4,19 @@ import asyncio
 from collections.abc import Callable
 from dataclasses import dataclass
 from math import isclose
+from turtle import pos
 
 import grpc
 from droneresponse_mathtools import Lla
 from loguru import logger as log
 from mavsdk import System
-from mavsdk.mission import Mission
-from mavsdk.mission import MissionError
-from mavsdk.mission import MissionItem
-from mavsdk.mission import MissionPlan
-from mavsdk.mission import MissionProgress
+from mavsdk.mission import (
+    Mission,
+    MissionError,
+    MissionItem,
+    MissionPlan,
+    MissionProgress,
+)
 
 MAX_LAT = 90
 MIN_LAT = -MAX_LAT
@@ -32,19 +35,33 @@ class NED:
 
 
 @dataclass
+class LatLongAlt:
+    """Latitude-Longitude-Altitude coordinates."""
+
+    lat: float
+    lon: float
+    alt: float
+
+
+@dataclass
 class MissionStep:
     """Represents a single step in a waypoint-based mission."""
 
-    short_name: str
-    description: str
-    ned: NED
+    short_name: str | None
+    description: str | None
+    ned: NED | None
     home_alt: float
     speed: float
     home: Lla
+    move_lla: LatLongAlt | None
 
     def create_mission_item(self) -> MissionItem:
         """Creates a MissionItem based on the NED coordinates relative to home."""
-        pos_lla = self._create_lla_vector()
+        pos_lla: Lla | LatLongAlt = self.home
+        if self.ned is None:
+            pos_lla = self.move_lla
+        else:
+            pos_lla = self._create_lla_vector()
         log.trace(
             "Creating waypoint at "
             f"{pos_lla.lat:.6f}, {pos_lla.lon:.6f}, {pos_lla.alt:.2f}"
@@ -57,6 +74,8 @@ class MissionStep:
         )
 
     def _create_lla_vector(self) -> Lla:
+        if self.ned is None:
+            return self.home
         result = self.home.move_ned(
             north=self.ned.north, east=self.ned.east, down=self.ned.down
         )
@@ -74,7 +93,7 @@ class ResilientDrone:
 
     def __init__(
         self,
-        listen_port: str,
+        listen_port: int,
         drone_id: int,
         mavsdk_port: int,
         max_retries: int = 10,
