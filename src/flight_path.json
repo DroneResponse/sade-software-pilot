@@ -7,7 +7,7 @@
         "description": "",
         "lat": null,
         "lon": null,
-        "ele": 100,
+        "alt": 100,
         "home": false
       },
       {
@@ -15,7 +15,7 @@
         "description": "",
         "lat": 41.60823,
         "lon": -86.34993,
-        "ele": 192.95439995600952,
+        "alt": 192.95439995600952,
         "home": false
       },
       {
@@ -23,7 +23,7 @@
         "description": "",
         "lat": 41.60849,
         "lon": -86.3499,
-        "ele": 192.68130122373108,
+        "alt": 192.68130122373108,
         "home": false
       },
       {
@@ -31,7 +31,7 @@
         "description": "",
         "lat": 41.60853,
         "lon": -86.3502,
-        "ele": 193.07872812136713,
+        "alt": 193.07872812136713,
         "home": false
       },
       {
@@ -39,7 +39,7 @@
         "description": "",
         "lat": 41.60842,
         "lon": -86.35011,
-        "ele": 192.78740090407203,
+        "alt": 192.78740090407203,
         "home": false
       },
       {
@@ -47,7 +47,7 @@
         "description": "",
         "lat": 41.60837,
         "lon": -86.35007,
-        "ele": 192.67897034216185,
+        "alt": 192.67897034216185,
         "home": false
       },
       {
@@ -55,7 +55,7 @@
         "description": "",
         "lat": 41.60819,
         "lon": -86.35006,
-        "ele": 193.05940076191564,
+        "alt": 193.05940076191564,
         "home": false
       },
       {
@@ -63,7 +63,7 @@
         "description": "",
         "lat": 41.60819,
         "lon": -86.35002,
-        "ele": 193.05694947047866,
+        "alt": 193.05694947047866,
         "home": false
       },
       {
@@ -71,7 +71,7 @@
         "description": "",
         "lat": 41.60853,
         "lon": -86.35003,
-        "ele": 192.68370294707225,
+        "alt": 192.68370294707225,
         "home": false
       },
       {
@@ -79,7 +79,7 @@
         "description": "",
         "lat": 41.60853,
         "lon": -86.34999,
-        "ele": 192.61686874131965,
+        "alt": 192.61686874131965,
         "home": false
       },
       {
@@ -87,7 +87,7 @@
         "description": "",
         "lat": 41.60825,
         "lon": -86.34999,
-        "ele": 192.89441375334516,
+        "alt": 192.89441375334516,
         "home": false
       },
       {
@@ -95,7 +95,7 @@
         "description": "",
         "lat": null,
         "lon": null,
-        "ele": 100,
+        "alt": 100,
         "home": false
       },
       {
@@ -103,7 +103,7 @@
         "description": "",
         "lat": null,
         "lon": null,
-        "ele": null,
+        "alt": null,
         "home": true
       }
     ]
@@ -116,7 +116,7 @@
         "description": "",
         "lat": null,
         "lon": null,
-        "ele": 100,
+        "alt": 100,
         "home": false
       }
     ]
@@ -129,7 +129,7 @@
         "description": "",
         "lat": null,
         "lon": null,
-        "ele": 100,
+        "alt": 100,
         "home": false
       }
     ]
@@ -142,7 +142,7 @@
         "description": "",
         "lat": null,
         "lon": null,
-        "ele": 100,
+        "alt": 100,
         "home": false
       }
     ]
@@ -155,7 +155,7 @@
         "description": "",
         "lat": null,
         "lon": null,
-        "ele": 100,
+        "alt": 100,
         "home": false
       }
     ]
@@ -168,7 +168,7 @@
         "description": "",
         "lat": null,
         "lon": null,
-        "ele": 100,
+        "alt": 100,
         "home": false
       }
     ]
@@ -181,7 +181,7 @@
         "description": "",
         "lat": null,
         "lon": null,
-        "ele": 100,
+        "alt": 100,
         "home": false
       }
     ]
@@ -194,7 +194,7 @@
         "description": "",
         "lat": null,
         "lon": null,
-        "ele": 100,
+        "alt": 100,
         "home": false
       }
     ]
@@ -207,7 +207,7 @@
         "description": "",
         "lat": null,
         "lon": null,
-        "ele": 100,
+        "alt": 100,
         "home": false
       }
     ]
@@ -220,7 +220,7 @@
         "description": "",
         "lat": null,
         "lon": null,
-        "ele": 100,
+        "alt": 100,
         "home": false
       }
     ]
