@@ -13,107 +13,6 @@
       {
         "short_name": "",
         "description": "",
-        "lat": 41.60823,
-        "lon": -86.34993,
-        "alt": 192.95439995600952,
-        "home": false
-      },
-      {
-        "short_name": "",
-        "description": "",
-        "lat": 41.60849,
-        "lon": -86.3499,
-        "alt": 192.68130122373108,
-        "home": false
-      },
-      {
-        "short_name": "",
-        "description": "",
-        "lat": 41.60853,
-        "lon": -86.3502,
-        "alt": 193.07872812136713,
-        "home": false
-      },
-      {
-        "short_name": "",
-        "description": "",
-        "lat": 41.60842,
-        "lon": -86.35011,
-        "alt": 192.78740090407203,
-        "home": false
-      },
-      {
-        "short_name": "",
-        "description": "",
-        "lat": 41.60837,
-        "lon": -86.35007,
-        "alt": 192.67897034216185,
-        "home": false
-      },
-      {
-        "short_name": "",
-        "description": "",
-        "lat": 41.60819,
-        "lon": -86.35006,
-        "alt": 193.05940076191564,
-        "home": false
-      },
-      {
-        "short_name": "",
-        "description": "",
-        "lat": 41.60819,
-        "lon": -86.35002,
-        "alt": 193.05694947047866,
-        "home": false
-      },
-      {
-        "short_name": "",
-        "description": "",
-        "lat": 41.60853,
-        "lon": -86.35003,
-        "alt": 192.68370294707225,
-        "home": false
-      },
-      {
-        "short_name": "",
-        "description": "",
-        "lat": 41.60853,
-        "lon": -86.34999,
-        "alt": 192.61686874131965,
-        "home": false
-      },
-      {
-        "short_name": "",
-        "description": "",
-        "lat": 41.60825,
-        "lon": -86.34999,
-        "alt": 192.89441375334516,
-        "home": false
-      },
-      {
-        "short_name": "",
-        "description": "",
-        "lat": null,
-        "lon": null,
-        "alt": 100,
-        "home": false
-      }
-    ]
-  },
-  {
-    "drone_id": "2",
-    "flight_path": [
-      {
-        "short_name": "",
-        "description": "",
-        "lat": null,
-        "lon": null,
-        "alt": 100,
-        "home": false
-      },
-      {
-        "short_name": "",
-        "description": "",
         "lat": 41.6069,
         "lon": -86.34819,
         "alt": 195.65312538978225,
@@ -178,7 +77,7 @@
     ]
   },
   {
-    "drone_id": "3",
+    "drone_id": "2",
     "flight_path": [
       {
         "short_name": "",
@@ -255,14 +154,219 @@
     ]
   },
   {
+    "drone_id": "3",
+    "flight_path": [
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 41.59732,
+        "lon": -86.3591,
+        "alt": 190.5576512504707,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 41.59733,
+        "lon": -86.35869,
+        "alt": 191.24780688429573,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 41.59767,
+        "lon": -86.35889,
+        "alt": 191.44542350683793,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 41.59803,
+        "lon": -86.3592,
+        "alt": 191.44542350683793,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 41.59843,
+        "lon": -86.35731,
+        "alt": 191.44542350683793,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 41.59814,
+        "lon": -86.35616,
+        "alt": 187.3632588671582,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 41.59503,
+        "lon": -86.35606,
+        "alt": 188.86863806249832,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 41.59501,
+        "lon": -86.35917,
+        "alt": 192.86863806249832,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 41.59547,
+        "lon": -86.35922,
+        "alt": 190.62941438422803,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 41.59555,
+        "lon": -86.35986,
+        "alt": 190.62941438422803,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 41.59624,
+        "lon": -86.3599,
+        "alt": 190.62941438422803,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 41.59628,
+        "lon": -86.35917,
+        "alt": 190.62941438422803,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 41.59646,
+        "lon": -86.35918,
+        "alt": 190.62941438422803,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 41.5965,
+        "lon": -86.35862,
+        "alt": 190.62941438422803,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 41.59731,
+        "lon": -86.35865,
+        "alt": 190.62941438422803,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 41.59732,
+        "lon": -86.3591,
+        "alt": 190.5576512504707,
+        "home": false
+      }
+    ]
+  },
+  {
     "drone_id": "4",
     "flight_path": [
       {
         "short_name": "",
         "description": "",
-        "lat": null,
-        "lon": null,
-        "alt": 100,
+        "lat": 41.601503,
+        "lon": -86.360247,
+        "alt": 190.5576512504707,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 41.601553,
+        "lon": -86.359201,
+        "alt": 190.5576512504707,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 41.602376,
+        "lon": -86.359185,
+        "alt": 190.5576512504707,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 41.602421,
+        "lon": -86.356954,
+        "alt": 190.5576512504707,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 41.601633,
+        "lon": -86.356859,
+        "alt": 190.5576512504707,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 41.601624,
+        "lon": -86.355838,
+        "alt": 190.5576512504707,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 41.601312,
+        "lon": -86.35576,
+        "alt": 190.5576512504707,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 41.601337,
+        "lon": -86.355014,
+        "alt": 190.5576512504707,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 41.600302,
+        "lon": -86.355015,
+        "alt": 190.5576512504707,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 41.601503,
+        "lon": -86.360247,
+        "alt": 190.5576512504707,
         "home": false
       }
     ]
@@ -273,75 +377,50 @@
       {
         "short_name": "",
         "description": "",
-        "lat": null,
-        "lon": null,
-        "alt": 100,
+        "lat": 41.599816,
+        "lon": -86.363435,
+        "alt": 190.5576512504707,
         "home": false
-      }
-    ]
-  },
-  {
-    "drone_id": "6",
-    "flight_path": [
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 41.598561,
+        "lon": -86.363416,
+        "alt": 190.5576512504707,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 41.598148,
+        "lon": -86.362306,
+        "alt": 190.5576512504707,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 41.598188,
+        "lon": -86.360507,
+        "alt": 190.5576512504707,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 41.599902,
+        "lon": -86.360566,
+        "alt": 190.5576512504707,
+        "home": false
+      },
       {
         "short_name": "",
         "description": "",
         "lat": null,
         "lon": null,
-        "alt": 100,
-        "home": false
-      }
-    ]
-  },
-  {
-    "drone_id": "7",
-    "flight_path": [
-      {
-        "short_name": "",
-        "description": "",
-        "lat": null,
-        "lon": null,
-        "alt": 100,
-        "home": false
-      }
-    ]
-  },
-  {
-    "drone_id": "8",
-    "flight_path": [
-      {
-        "short_name": "",
-        "description": "",
-        "lat": null,
-        "lon": null,
-        "alt": 100,
-        "home": false
-      }
-    ]
-  },
-  {
-    "drone_id": "9",
-    "flight_path": [
-      {
-        "short_name": "",
-        "description": "",
-        "lat": null,
-        "lon": null,
-        "alt": 100,
-        "home": false
-      }
-    ]
-  },
-  {
-    "drone_id": "10",
-    "flight_path": [
-      {
-        "short_name": "",
-        "description": "",
-        "lat": null,
-        "lon": null,
-        "alt": 100,
-        "home": false
+        "alt": 190.5576512504707,
+        "home": true
       }
     ]
   }
