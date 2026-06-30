@@ -40,9 +40,9 @@ async def create_mission(
 
     # local vars
     speed_mps = 20.0
-    cruising_altitude = 50
+    cruising_altitude = 10
     speed_mps = 20.0
-    startup_wait = 5
+    startup_wait = 2
 
     flight_path: dict[str, FlightPath] = parse_flight_path()
     drone_flight_path: FlightPath = flight_path[str(drone.drone_id)]
