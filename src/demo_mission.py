@@ -40,7 +40,7 @@ async def create_mission(
 
     # local vars
     speed_mps = 20.0
-    cruising_altitude = 10
+    cruising_altitude = 50
     speed_mps = 20.0
     startup_wait = 2
 
