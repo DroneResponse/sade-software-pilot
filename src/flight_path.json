@@ -5,14 +5,6 @@
       {
         "short_name": "",
         "description": "",
-        "lat": null,
-        "lon": null,
-        "alt": 100,
-        "home": false
-      },
-      {
-        "short_name": "",
-        "description": "",
         "lat": 41.6069,
         "lon": -86.34819,
         "alt": 195.65312538978225,
@@ -382,14 +374,6 @@
         "description": "",
         "lat": 41.600302,
         "lon": -86.355015,
-        "alt": 190.5576512504707,
-        "home": false
-      },
-      {
-        "short_name": "",
-        "description": "",
-        "lat": 41.601503,
-        "lon": -86.360247,
         "alt": 190.5576512504707,
         "home": false
       },
