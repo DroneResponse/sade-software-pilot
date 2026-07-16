@@ -69,7 +69,7 @@ async def create_mission(
             mission_step = MissionStep(
                 short_name="takeoff",
                 description="Take off from home position",
-                ned=NED(north=0, east=0, down=-step.alt),
+                ned=NED(north=0, east=0, down=-cruising_altitude),
                 home_alt=home.altitude,
                 speed=speed_mps,
                 home=home,
