@@ -349,12 +349,12 @@ pyproject.toml            # EDIT: Change version, add dependencies
 
 + **MAVSDK Documentation:** [MAVSDK Python](https://mavsdk.mavlink.io/)
 + **Coordinate System:** [NED Coordinates Explained](https://en.wikipedia.org/wiki/Local_tangent_plane_coordinates)
-+ **SADE Overview:** See main [README.md](README.md)
-+ **API Reference:** See [API.md](API.md)
++ **SADE Overview:** See main [README.md](../README.md)
++ **API Reference:** See [API.md](api.md)
 
 ## Getting Help
 
-+ Check [FAQ.md](FAQ.md)
++ Check [FAQ.md](faq.md)
 + Search [GitHub Issues](https://github.com/DroneResponse/sade-software-pilot/issues)
 + Start a [GitHub Discussion](https://github.com/DroneResponse/sade-software-pilot/discussions)
 + Contact SADE team
