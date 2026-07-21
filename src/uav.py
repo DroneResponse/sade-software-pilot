@@ -3,7 +3,11 @@
 import asyncio
 from collections.abc import Callable
 from dataclasses import dataclass
+from math import cos
+from math import hypot
 from math import isclose
+from math import isfinite
+from math import radians
 
 import grpc
 from droneresponse_mathtools import Lla
@@ -20,13 +24,14 @@ from .config import MAX_LON
 from .config import MIN_LAT
 from .config import MIN_LON
 from .config import MIN_SPEED
-from .config import SURVELLIANCE_DRONE_IDS_MAX
 from .config import ZONE_REQUEST_THRESHOLD_METERS
 from .config import get_origin
 from .zones import SadeZoneLease
 from .zones import SadeZones
 
 NEARBY_RECHECK_INTERVAL = 1
+METERS_PER_DEGREE_LATITUDE = 111_000.0
+GEOMETRY_EPSILON = 1e-7
 
 
 @dataclass
@@ -37,21 +42,34 @@ class NED:
     east: float
     down: float
 
+@dataclass
+class LatLongAlt:
+    """Latitude-Longitude-Altitude coordinates."""
+
+    lat: float
+    lon: float
+    alt: float
+
 
 @dataclass
 class MissionStep:
     """Represents a single step in a waypoint-based mission."""
 
-    short_name: str
-    description: str
-    ned: NED
+    short_name: str | None
+    description: str | None
+    ned: NED | None
     home_alt: float
     speed: float
     home: Lla
+    move_lla: LatLongAlt | None = None
 
     def create_mission_item(self) -> MissionItem:
         """Creates a MissionItem based on the NED coordinates relative to home."""
-        pos_lla = self._create_lla_vector()
+        pos_lla: Lla | LatLongAlt = self.home
+        if self.ned is None:
+            pos_lla = self.move_lla
+        else:
+            pos_lla = self._create_lla_vector()
         log.trace(
             "Creating waypoint at "
             f"{pos_lla.lat:.6f}, {pos_lla.lon:.6f}, {pos_lla.alt:.2f}"
@@ -64,6 +82,8 @@ class MissionStep:
         )
 
     def _create_lla_vector(self) -> Lla:
+        if self.ned is None:
+            return self.home
         result = self.home.move_ned(
             north=self.ned.north, east=self.ned.east, down=self.ned.down
         )
@@ -71,6 +91,689 @@ class MissionStep:
             msg = "move_ned did not return Lla type"
             raise TypeError(msg)
         return result
+
+
+def _horizontal_distance_m(
+    latitude_1: float,
+    longitude_1: float,
+    latitude_2: float,
+    longitude_2: float,
+) -> float:
+    """Calculate approximate horizontal distance for nearby coordinates."""
+    reference_latitude = (latitude_1 + latitude_2) / 2.0
+    longitude_scale = (
+        METERS_PER_DEGREE_LATITUDE
+        * cos(radians(reference_latitude))
+    )
+
+    north_m = (
+        latitude_2 - latitude_1
+    ) * METERS_PER_DEGREE_LATITUDE
+
+    east_m = (
+        longitude_2 - longitude_1
+    ) * longitude_scale
+
+    return hypot(east_m, north_m)
+
+
+def _to_local_xy(
+    latitude: float,
+    longitude: float,
+    reference_latitude: float,
+    reference_longitude: float,
+) -> tuple[float, float]:
+    """Convert latitude/longitude to local east/north coordinates."""
+    longitude_scale = (
+        METERS_PER_DEGREE_LATITUDE
+        * cos(radians(reference_latitude))
+    )
+
+    if isclose(longitude_scale, 0.0):
+        raise ValueError(
+            "Cannot create local coordinates near the geographic poles"
+        )
+
+    east_m = (
+        longitude - reference_longitude
+    ) * longitude_scale
+
+    north_m = (
+        latitude - reference_latitude
+    ) * METERS_PER_DEGREE_LATITUDE
+
+    return east_m, north_m
+
+
+def _from_local_xy(
+    east_m: float,
+    north_m: float,
+    reference_latitude: float,
+    reference_longitude: float,
+) -> tuple[float, float]:
+    """Convert local east/north coordinates to latitude/longitude."""
+    longitude_scale = (
+        METERS_PER_DEGREE_LATITUDE
+        * cos(radians(reference_latitude))
+    )
+
+    if isclose(longitude_scale, 0.0):
+        raise ValueError(
+            "Cannot create geographic coordinates near the poles"
+        )
+
+    latitude = (
+        reference_latitude
+        + north_m / METERS_PER_DEGREE_LATITUDE
+    )
+
+    longitude = (
+        reference_longitude
+        + east_m / longitude_scale
+    )
+
+    return latitude, longitude
+
+
+def _xy_distance(
+    point_1: tuple[float, float],
+    point_2: tuple[float, float],
+) -> float:
+    return hypot(
+        point_2[0] - point_1[0],
+        point_2[1] - point_1[1],
+    )
+
+
+def _points_are_close(
+    point_1: tuple[float, float],
+    point_2: tuple[float, float],
+    tolerance_m: float = 0.001,
+) -> bool:
+    return _xy_distance(point_1, point_2) <= tolerance_m
+
+
+def _orientation(
+    point_a: tuple[float, float],
+    point_b: tuple[float, float],
+    point_c: tuple[float, float],
+) -> float:
+    """Return the signed orientation of three local-coordinate points."""
+    return (
+        (point_b[0] - point_a[0])
+        * (point_c[1] - point_a[1])
+        - (point_b[1] - point_a[1])
+        * (point_c[0] - point_a[0])
+    )
+
+
+def _point_is_on_segment(
+    point: tuple[float, float],
+    segment_start: tuple[float, float],
+    segment_end: tuple[float, float],
+) -> bool:
+    if (
+        abs(
+            _orientation(
+                segment_start,
+                segment_end,
+                point,
+            )
+        )
+        > GEOMETRY_EPSILON
+    ):
+        return False
+
+    return (
+        min(segment_start[0], segment_end[0])
+        - GEOMETRY_EPSILON
+        <= point[0]
+        <= max(segment_start[0], segment_end[0])
+        + GEOMETRY_EPSILON
+        and min(segment_start[1], segment_end[1])
+        - GEOMETRY_EPSILON
+        <= point[1]
+        <= max(segment_start[1], segment_end[1])
+        + GEOMETRY_EPSILON
+    )
+
+
+def _segments_intersect(
+    first_start: tuple[float, float],
+    first_end: tuple[float, float],
+    second_start: tuple[float, float],
+    second_end: tuple[float, float],
+) -> bool:
+    """Return True when two closed line segments intersect."""
+    orientation_1 = _orientation(
+        first_start,
+        first_end,
+        second_start,
+    )
+    orientation_2 = _orientation(
+        first_start,
+        first_end,
+        second_end,
+    )
+    orientation_3 = _orientation(
+        second_start,
+        second_end,
+        first_start,
+    )
+    orientation_4 = _orientation(
+        second_start,
+        second_end,
+        first_end,
+    )
+
+    first_straddles = (
+        orientation_1 > GEOMETRY_EPSILON
+        and orientation_2 < -GEOMETRY_EPSILON
+    ) or (
+        orientation_1 < -GEOMETRY_EPSILON
+        and orientation_2 > GEOMETRY_EPSILON
+    )
+
+    second_straddles = (
+        orientation_3 > GEOMETRY_EPSILON
+        and orientation_4 < -GEOMETRY_EPSILON
+    ) or (
+        orientation_3 < -GEOMETRY_EPSILON
+        and orientation_4 > GEOMETRY_EPSILON
+    )
+
+    if first_straddles and second_straddles:
+        return True
+
+    if (
+        abs(orientation_1) <= GEOMETRY_EPSILON
+        and _point_is_on_segment(
+            second_start,
+            first_start,
+            first_end,
+        )
+    ):
+        return True
+
+    if (
+        abs(orientation_2) <= GEOMETRY_EPSILON
+        and _point_is_on_segment(
+            second_end,
+            first_start,
+            first_end,
+        )
+    ):
+        return True
+
+    if (
+        abs(orientation_3) <= GEOMETRY_EPSILON
+        and _point_is_on_segment(
+            first_start,
+            second_start,
+            second_end,
+        )
+    ):
+        return True
+
+    return (
+        abs(orientation_4) <= GEOMETRY_EPSILON
+        and _point_is_on_segment(
+            first_end,
+            second_start,
+            second_end,
+        )
+    )
+
+
+def _point_is_inside_polygon(
+    point: tuple[float, float],
+    polygon: list[tuple[float, float]],
+) -> bool:
+    """Check polygon containment, treating the boundary as inside."""
+    if len(polygon) < 3:
+        return False
+
+    for index in range(len(polygon)):
+        edge_start = polygon[index]
+        edge_end = polygon[(index + 1) % len(polygon)]
+
+        if _point_is_on_segment(
+            point,
+            edge_start,
+            edge_end,
+        ):
+            return True
+
+    point_x, point_y = point
+    inside = False
+    previous_index = len(polygon) - 1
+
+    for index in range(len(polygon)):
+        current_x, current_y = polygon[index]
+        previous_x, previous_y = polygon[previous_index]
+
+        crosses_horizontal_ray = (
+            current_y > point_y
+        ) != (
+            previous_y > point_y
+        )
+
+        if crosses_horizontal_ray:
+            intersection_x = (
+                (previous_x - current_x)
+                * (point_y - current_y)
+                / (previous_y - current_y)
+                + current_x
+            )
+
+            if point_x < intersection_x:
+                inside = not inside
+
+        previous_index = index
+
+    return inside
+
+
+def _segment_intersects_polygon(
+    segment_start: tuple[float, float],
+    segment_end: tuple[float, float],
+    polygon: list[tuple[float, float]],
+) -> bool:
+    """Check whether a segment enters or touches a polygon."""
+    if _point_is_inside_polygon(segment_start, polygon):
+        return True
+
+    if _point_is_inside_polygon(segment_end, polygon):
+        return True
+
+    for index in range(len(polygon)):
+        edge_start = polygon[index]
+        edge_end = polygon[(index + 1) % len(polygon)]
+
+        if _segments_intersect(
+            segment_start,
+            segment_end,
+            edge_start,
+            edge_end,
+        ):
+            return True
+
+    midpoint = (
+        (segment_start[0] + segment_end[0]) / 2.0,
+        (segment_start[1] + segment_end[1]) / 2.0,
+    )
+
+    return _point_is_inside_polygon(midpoint, polygon)
+
+
+def _deduplicate_points(
+    points: list[tuple[float, float]],
+) -> list[tuple[float, float]]:
+    if not points:
+        return []
+
+    result = [points[0]]
+
+    for point in points[1:]:
+        if not _points_are_close(point, result[-1]):
+            result.append(point)
+
+    return result
+
+
+def _rectangle_anchors(
+    point: tuple[float, float],
+    minimum_x: float,
+    maximum_x: float,
+    minimum_y: float,
+    maximum_y: float,
+) -> list[tuple[float, float]]:
+    """Project a point onto all four sides of a rectangle."""
+    point_x, point_y = point
+
+    clamped_x = min(max(point_x, minimum_x), maximum_x)
+    clamped_y = min(max(point_y, minimum_y), maximum_y)
+
+    candidates = [
+        (minimum_x, clamped_y),
+        (maximum_x, clamped_y),
+        (clamped_x, minimum_y),
+        (clamped_x, maximum_y),
+    ]
+
+    unique_candidates: list[tuple[float, float]] = []
+
+    for candidate in candidates:
+        if not any(
+            _points_are_close(candidate, existing)
+            for existing in unique_candidates
+        ):
+            unique_candidates.append(candidate)
+
+    return unique_candidates
+
+
+def _rectangle_perimeter_parameter(
+    point: tuple[float, float],
+    minimum_x: float,
+    maximum_x: float,
+    minimum_y: float,
+    maximum_y: float,
+) -> float:
+    """Map a point on a rectangle boundary to perimeter distance."""
+    point_x, point_y = point
+    width = maximum_x - minimum_x
+    height = maximum_y - minimum_y
+
+    if isclose(point_y, minimum_y, abs_tol=GEOMETRY_EPSILON):
+        return point_x - minimum_x
+
+    if isclose(point_x, maximum_x, abs_tol=GEOMETRY_EPSILON):
+        return width + point_y - minimum_y
+
+    if isclose(point_y, maximum_y, abs_tol=GEOMETRY_EPSILON):
+        return width + height + maximum_x - point_x
+
+    if isclose(point_x, minimum_x, abs_tol=GEOMETRY_EPSILON):
+        return 2.0 * width + height + maximum_y - point_y
+
+    raise ValueError("Point is not on the detour rectangle boundary")
+
+
+def _rectangle_perimeter_route(
+    start: tuple[float, float],
+    end: tuple[float, float],
+    minimum_x: float,
+    maximum_x: float,
+    minimum_y: float,
+    maximum_y: float,
+    *,
+    forward: bool,
+) -> list[tuple[float, float]]:
+    """Build one of the two perimeter routes between boundary points."""
+    width = maximum_x - minimum_x
+    height = maximum_y - minimum_y
+    perimeter = 2.0 * (width + height)
+
+    start_parameter = _rectangle_perimeter_parameter(
+        start,
+        minimum_x,
+        maximum_x,
+        minimum_y,
+        maximum_y,
+    )
+    end_parameter = _rectangle_perimeter_parameter(
+        end,
+        minimum_x,
+        maximum_x,
+        minimum_y,
+        maximum_y,
+    )
+
+    corners_with_parameters = [
+        ((minimum_x, minimum_y), 0.0),
+        ((maximum_x, minimum_y), width),
+        ((maximum_x, maximum_y), width + height),
+        (
+            (minimum_x, maximum_y),
+            2.0 * width + height,
+        ),
+    ]
+
+    selected_corners: list[
+        tuple[float, tuple[float, float]]
+    ] = []
+
+    if forward:
+        route_distance = (
+            end_parameter - start_parameter
+        ) % perimeter
+
+        for corner, corner_parameter in corners_with_parameters:
+            offset = (
+                corner_parameter - start_parameter
+            ) % perimeter
+
+            if (
+                GEOMETRY_EPSILON
+                < offset
+                < route_distance - GEOMETRY_EPSILON
+            ):
+                selected_corners.append((offset, corner))
+    else:
+        route_distance = (
+            start_parameter - end_parameter
+        ) % perimeter
+
+        for corner, corner_parameter in corners_with_parameters:
+            offset = (
+                start_parameter - corner_parameter
+            ) % perimeter
+
+            if (
+                GEOMETRY_EPSILON
+                < offset
+                < route_distance - GEOMETRY_EPSILON
+            ):
+                selected_corners.append((offset, corner))
+
+    selected_corners.sort(key=lambda item: item[0])
+
+    route = [
+        start,
+        *[corner for _, corner in selected_corners],
+        end,
+    ]
+
+    return _deduplicate_points(route)
+
+
+def _plan_sade_zone_detour(
+    current: tuple[float, float],
+    target: tuple[float, float],
+    vertices: list[tuple[float, float]],
+    *,
+    clearance_m: float,
+) -> list[tuple[float, float]]:
+    """Plan a shortest valid route around a polygonal SADE zone.
+
+    Args:
+        current: Current ``(latitude, longitude)``.
+        target: Active mission item's ``(latitude, longitude)``.
+        vertices: Zone vertices as ``(latitude, longitude)``.
+        clearance_m: Distance between the zone bounding perimeter and the
+            generated detour route.
+
+    Returns:
+        Detour waypoints as ``(latitude, longitude)``. The original mission
+        target is intentionally excluded because MAVSDK resumes the original
+        mission after reaching the final detour point.
+
+    Raises:
+        ValueError: If the input is invalid or no safe route can be found.
+    """
+    if len(vertices) < 3:
+        raise ValueError(
+            "At least three vertices are required for a SADE-zone detour"
+        )
+
+    if clearance_m <= 0:
+        raise ValueError("clearance_m must be greater than zero")
+
+    reference_latitude = sum(
+        latitude for latitude, _ in vertices
+    ) / len(vertices)
+
+    reference_longitude = sum(
+        longitude for _, longitude in vertices
+    ) / len(vertices)
+
+    polygon_xy = [
+        _to_local_xy(
+            latitude,
+            longitude,
+            reference_latitude,
+            reference_longitude,
+        )
+        for latitude, longitude in vertices
+    ]
+
+    current_xy = _to_local_xy(
+        current[0],
+        current[1],
+        reference_latitude,
+        reference_longitude,
+    )
+
+    target_xy = _to_local_xy(
+        target[0],
+        target[1],
+        reference_latitude,
+        reference_longitude,
+    )
+
+    if _point_is_inside_polygon(current_xy, polygon_xy):
+        raise ValueError(
+            "Cannot begin lateral avoidance because the drone is "
+            "horizontally inside the SADE zone"
+        )
+
+    if _point_is_inside_polygon(target_xy, polygon_xy):
+        raise ValueError(
+            "Cannot resume toward a mission waypoint inside the SADE zone"
+        )
+
+    # If the original mission segment does not intersect the polygon,
+    # no lateral detour is necessary.
+    if not _segment_intersects_polygon(
+        current_xy,
+        target_xy,
+        polygon_xy,
+    ):
+        return []
+
+    polygon_x_values = [
+        point[0] for point in polygon_xy
+    ]
+    polygon_y_values = [
+        point[1] for point in polygon_xy
+    ]
+
+    minimum_x = min(polygon_x_values) - clearance_m
+    maximum_x = max(polygon_x_values) + clearance_m
+    minimum_y = min(polygon_y_values) - clearance_m
+    maximum_y = max(polygon_y_values) + clearance_m
+
+    if (
+        maximum_x - minimum_x <= GEOMETRY_EPSILON
+        or maximum_y - minimum_y <= GEOMETRY_EPSILON
+    ):
+        raise ValueError("SADE zone has invalid polygon dimensions")
+
+    current_anchors = _rectangle_anchors(
+        current_xy,
+        minimum_x,
+        maximum_x,
+        minimum_y,
+        maximum_y,
+    )
+
+    target_anchors = _rectangle_anchors(
+        target_xy,
+        minimum_x,
+        maximum_x,
+        minimum_y,
+        maximum_y,
+    )
+
+    best_route: list[tuple[float, float]] | None = None
+    best_distance = float("inf")
+
+    for current_anchor in current_anchors:
+        if _segment_intersects_polygon(
+            current_xy,
+            current_anchor,
+            polygon_xy,
+        ):
+            continue
+
+        for target_anchor in target_anchors:
+            if _segment_intersects_polygon(
+                target_anchor,
+                target_xy,
+                polygon_xy,
+            ):
+                continue
+
+            for forward in (True, False):
+                perimeter_route = _rectangle_perimeter_route(
+                    current_anchor,
+                    target_anchor,
+                    minimum_x,
+                    maximum_x,
+                    minimum_y,
+                    maximum_y,
+                    forward=forward,
+                )
+
+                complete_route = _deduplicate_points(
+                    [
+                        current_xy,
+                        *perimeter_route,
+                        target_xy,
+                    ]
+                )
+
+                route_is_valid = True
+
+                for index in range(len(complete_route) - 1):
+                    if _segment_intersects_polygon(
+                        complete_route[index],
+                        complete_route[index + 1],
+                        polygon_xy,
+                    ):
+                        route_is_valid = False
+                        break
+
+                if not route_is_valid:
+                    continue
+
+                route_distance = sum(
+                    _xy_distance(
+                        complete_route[index],
+                        complete_route[index + 1],
+                    )
+                    for index in range(len(complete_route) - 1)
+                )
+
+                if route_distance < best_distance:
+                    best_distance = route_distance
+                    best_route = perimeter_route
+
+    if best_route is None:
+        raise ValueError(
+            "No non-intersecting route around the SADE zone was found"
+        )
+
+    # Exclude the current position and original target. Only temporary
+    # perimeter points should be passed to goto_location().
+    detour_xy = [
+        point
+        for point in _deduplicate_points(best_route)
+        if not _points_are_close(point, current_xy)
+        and not _points_are_close(point, target_xy)
+    ]
+
+    return [
+        _from_local_xy(
+            east_m=point[0],
+            north_m=point[1],
+            reference_latitude=reference_latitude,
+            reference_longitude=reference_longitude,
+        )
+        for point in detour_xy
+    ]
+
 
 
 class ResilientDrone:
@@ -100,7 +803,6 @@ class ResilientDrone:
         self._system_address = f"{self._schema}{self._host}:{self._listen_port}"
         self._zones = SadeZones()
         self._nearby_check = None
-        self._set_home_set = False
         self._nearby_zones = {}
         self._mission_speed = float("inf")
         self._approaching_sade_zone = None
@@ -109,6 +811,8 @@ class ResilientDrone:
         self.current_progress_mission = 0
         self.coordinate_based_missions = True
         self.executed_go_home = False
+        self._avoiding_sade_zone = False
+        self._detoured_sade_zones: set[str] = set()
 
     def set_home_mission(self, home_mission: list[MissionItem]):
         self.home_mission = home_mission
@@ -132,11 +836,213 @@ class ResilientDrone:
     def log_error(self, message: str) -> None:
         log.error(f"{self._log_prefix} {message}")
 
-    def get_set_home(self):
-        return self._set_home_set
 
-    def set_set_home(self, value):
-        self._set_home_set = value
+    async def _wait_until_location_reached(
+        self,
+        latitude: float,
+        longitude: float,
+        *,
+        acceptance_radius_m: float,
+        timeout_s: float,
+    ) -> None:
+        """Wait until telemetry reports that a location has been reached."""
+        if acceptance_radius_m <= 0:
+            raise ValueError("acceptance_radius_m must be greater than zero")
+
+        if timeout_s <= 0:
+            raise ValueError("timeout_s must be greater than zero")
+
+        try:
+            async with asyncio.timeout(timeout_s):
+                async for position in self.telemetry_position():
+                    distance_m = _horizontal_distance_m(
+                        position.latitude_deg,
+                        position.longitude_deg,
+                        latitude,
+                        longitude,
+                    )
+
+                    if distance_m <= acceptance_radius_m:
+                        self.log(
+                            "Reached detour waypoint "
+                            f"{latitude:.7f}, {longitude:.7f} "
+                            f"within {distance_m:.1f} meters"
+                        )
+                        return
+        except TimeoutError as error:
+            msg = (
+                "Timed out navigating to detour waypoint "
+                f"{latitude:.7f}, {longitude:.7f}"
+            )
+            raise TimeoutError(msg) from error
+
+        raise RuntimeError("Position telemetry stream ended unexpectedly")
+
+
+    async def navigate_around_sade_zone(
+        self,
+        zone_id: str,
+        *,
+        clearance_m: float = 20.0,
+        acceptance_radius_m: float = 5.0,
+        waypoint_timeout_s: float = 120.0,
+    ) -> bool:
+        """Navigate around a SADE zone, then resume the original mission.
+
+        The mission stored on the vehicle is not cleared, modified, or
+        re-uploaded. Temporary movement around the zone uses goto_location().
+        """
+        if self._avoiding_sade_zone:
+            self.log_warning(
+                "A SADE-zone avoidance maneuver is already active"
+            )
+            return False
+
+        zone = self._zones.get_sade_zone(zone_id)
+
+        if zone is None:
+            self.log_error(f"Cannot find SADE zone: {zone_id}")
+            await self.hold()
+            return False
+
+        self._avoiding_sade_zone = True
+
+        try:
+            # Keep the existing mission uploaded but stop it from advancing.
+            await self.mission_pause()
+            await self.hold()
+
+            mission_items, current_index = (
+                await self.download_current_mission_state()
+            )
+
+            if not mission_items:
+                raise ValueError(
+                    "The currently uploaded mission is empty"
+                )
+
+            if current_index is None:
+                # The mission has not started. Its first item is the target.
+                target_index = 0
+            elif current_index >= len(mission_items):
+                raise ValueError(
+                    "The original mission has already completed"
+                )
+            else:
+                target_index = current_index
+
+            target_item = mission_items[target_index]
+
+            # Ignore altitude here because this is specifically a lateral
+            # avoidance maneuver.
+            if zone.is_inside(
+                target_item.latitude_deg,
+                target_item.longitude_deg,
+            ):
+                raise ValueError(
+                    f"Mission waypoint {target_index} is inside "
+                    f"SADE zone {zone_id}; remaining in hold mode"
+                )
+
+            (
+                current_latitude,
+                current_longitude,
+                absolute_altitude,
+            ) = await self.fetch_drone_position()
+
+            detour_waypoints = _plan_sade_zone_detour(
+                current=(
+                    current_latitude,
+                    current_longitude,
+                ),
+                target=(
+                    target_item.latitude_deg,
+                    target_item.longitude_deg,
+                ),
+                vertices=[
+                    (vertex.latitude, vertex.longitude)
+                    for vertex in zone.vertices
+                ],
+                clearance_m=clearance_m,
+            )
+
+            if isfinite(self._mission_speed):
+                await self._system.action.set_current_speed(
+                    self._mission_speed
+                )
+
+            if not detour_waypoints:
+                self.log(
+                    f"The path to mission waypoint {target_index} "
+                    f"does not cross {zone_id}; resuming mission"
+                )
+
+                await self.mission_resume()
+                return True
+
+            self.log(
+                f"Navigating around {zone_id} using "
+                f"{len(detour_waypoints)} temporary waypoints"
+            )
+
+            for waypoint_number, (
+                latitude,
+                longitude,
+            ) in enumerate(detour_waypoints, start=1):
+                self.log(
+                    f"Flying to detour waypoint "
+                    f"{waypoint_number}/{len(detour_waypoints)}: "
+                    f"{latitude:.7f}, {longitude:.7f}"
+                )
+
+                # goto_location() requires absolute altitude. MissionItem stores
+                # relative altitude, so retain the current absolute altitude.
+                await self.go_to_location(
+                    latitude,
+                    longitude,
+                    absolute_altitude,
+                    0.0,
+                )
+
+                await self._wait_until_location_reached(
+                    latitude,
+                    longitude,
+                    acceptance_radius_m=acceptance_radius_m,
+                    timeout_s=waypoint_timeout_s,
+                )
+
+            self.log(
+                f"Finished navigating around {zone_id}; "
+                f"resuming mission at waypoint {target_index}"
+            )
+
+            # The original mission was never cleared or re-uploaded, so this
+            # continues from the flight controller's stored mission index.
+            await self.mission_resume()
+
+            self._detoured_sade_zones.add(zone_id)
+            return True
+
+        except Exception as error:  # noqa: BLE001
+            self.log_error(
+                f"Failed to navigate around SADE zone {zone_id}: {error}"
+            )
+
+            try:
+                await self.hold()
+            except Exception as hold_error:  # noqa: BLE001
+                self.log_error(
+                    "Failed to enter hold mode after detour failure: "
+                    f"{hold_error}"
+                )
+
+            return False
+
+        finally:
+            self._nearby_zones = {}
+            self._approaching_sade_zone = None
+            self._avoiding_sade_zone = False
+
 
     async def connect(self) -> None:
         attempt = 0
@@ -205,95 +1111,155 @@ class ResilientDrone:
             raise ValueError(msg)
         return current_latitude, current_longitude, current_altitude
 
-    async def close_monitoring(self, nearby_zones: dict[str, float] | float):
-        if self._nearby_zones and isinstance(nearby_zones, dict):
-            # now calculate the which zone is decreasing that means
-            # the drone is approaching it
-            # we already slowed down the drone speed now watch in which
-            # zone it is approaching
-            min_zone = None
-            min_distance = float("inf")
-            for zone_id in self._nearby_zones:
-                if min_zone and self._nearby_zones[zone_id] > nearby_zones.get(
-                    zone_id, float("inf")
-                ):
-                    min_zone = zone_id
-                    min_distance = nearby_zones.get(zone_id, float("inf"))
-                else:
-                    min_zone = zone_id
-                    min_distance = nearby_zones.get(zone_id, float("inf"))
-            # now we know what zone it is approaching
-            self._approaching_sade_zone = min_zone
-            # check if the drone is less than threshold limit to
-            # request the sade zone permission
-            if min_distance < ZONE_REQUEST_THRESHOLD_METERS:
-                await self.mission_pause()
-                sade_zone_lease: (
-                    SadeZoneLease | None
-                ) = await self._zones.request_sade_zone_entry(
+    async def close_monitoring(
+        self,
+        nearby_zones: dict[str, float] | float,
+    ):
+        if self._avoiding_sade_zone:
+            return
+
+        if not isinstance(nearby_zones, dict) or not nearby_zones:
+            return
+
+        if not self._nearby_zones:
+            self._nearby_zones = nearby_zones.copy()
+
+            self._mission_speed = (
+                await self.capture_drone_maximum_speed()
+            )
+
+            await self._system.action.set_current_speed(
+                self._mission_speed * 0.2
+            )
+            return
+
+        approaching_zones = [
+            (zone_id, current_distance)
+            for zone_id, current_distance in nearby_zones.items()
+            if (
+                zone_id in self._nearby_zones
+                and current_distance
+                < self._nearby_zones[zone_id]
+            )
+        ]
+
+        self._nearby_zones = nearby_zones.copy()
+
+        if not approaching_zones:
+            return
+
+        zone_id, min_distance = min(
+            approaching_zones,
+            key=lambda zone_and_distance: zone_and_distance[1],
+        )
+
+        self._approaching_sade_zone = zone_id
+
+        if min_distance >= ZONE_REQUEST_THRESHOLD_METERS:
+            return
+
+        await self.mission_pause()
+
+        try:
+            sade_zone_lease = (
+                await self._zones.request_sade_zone_entry(
                     drone=self,
-                    zone_sade_id=self._approaching_sade_zone,
+                    zone_sade_id=zone_id,
                     emulate_wait=True,
                 )
-                # fetching the current position for increasing the altitude
-                (
-                    current_lat,
-                    current_lon,
-                    current_alt,
-                ) = await self.fetch_drone_position()
-                await self._system.action.set_current_speed(self._mission_speed)
-                if sade_zone_lease:
-                    self.log(
-                        f"SADEZone access grant until {sade_zone_lease.expiration_time}"
+            )
+
+            if isfinite(self._mission_speed):
+                await self._system.action.set_current_speed(
+                    self._mission_speed
+                )
+
+            if sade_zone_lease:
+                self.log(
+                    "SADEZone access granted until "
+                    f"{sade_zone_lease.expiration_time}"
+                )
+
+                # The mission remains uploaded. No reset, download/upload, or
+                # altitude-adjusted replacement mission is necessary.
+                self.log(
+                    f"Access to {zone_id} was granted; "
+                    "resuming original mission"
+                )
+                await self.mission_resume()
+
+            else:
+                self.log_warning(
+                    f"Access to SADE zone {zone_id} was not granted; "
+                    "checking whether a detour is required"
+                )
+
+                detour_completed = (
+                    await self.navigate_around_sade_zone(
+                        zone_id,
+                        clearance_m=20.0,
+                        acceptance_radius_m=5.0,
+                        waypoint_timeout_s=120.0,
                     )
-                    await self.go_to_location(
-                        current_lat,
-                        current_lon,
-                        current_alt * 2,
-                        0.0,  # yaw (0.0 = unchanged, for many firmwares)
+                )
+
+                if not detour_completed:
+                    self.log_error(
+                        f"Could not safely navigate around {zone_id}; "
+                        "remaining in hold mode"
                     )
-                    await asyncio.sleep(20)
-                    if self.coordinate_based_missions:
-                        await self.reset_and_execute_mission_case_study()
-                    await self.reset_and_execute_mission()
-                # reset the class things
-                self._nearby_zones = {}
-        else:
-            self._nearby_zones = nearby_zones
-            # slow down the drone speed
-            # before slowing down capture the mission speed
-            self._mission_speed = await self.capture_drone_maximum_speed()
-            # now we can slow down the drone speed to 20 percent
-            await self._system.action.set_current_speed(self._mission_speed * 0.2)
+
+        finally:
+            self._nearby_zones = {}
+
 
     async def check_inside_sade_zones(self):
+        if self._avoiding_sade_zone:
+            return
+
         (
             current_latitude,
             current_longitude,
             current_altitude,
         ) = await self.fetch_drone_position()
-        inside, nearby = self._zones.classify_point_inside_zone(
-            current_latitude, current_longitude, current_altitude, self.drone_id
+
+        inside, nearby_result = self._zones.classify_point_inside_zone(
+            current_latitude,
+            current_longitude,
+            current_altitude,
+            self.drone_id,
         )
-        if self.get_set_home():
-            if not self.executed_go_home:
-                await self.mission_clear()
-                await self.execute_mission(mission_steps=self.get_home_mission())
-                self.executed_go_home = True
-            self.log("Return home flag set, skipping zone checks")
-            return
-        if inside is not None:
-            msg = "Drone is inside the defined zones!!!"
-            self.log(msg)
-            # every time reset the nearby zones as
-            # we might be inside a zone that is not nearby
-            self._nearby_zones = {}
-        elif nearby:
-            msg = "Drone is nearby one of the sade zones."
-            self.log(msg)
-            await self.close_monitoring(nearby)
+
+        if isinstance(nearby_result, dict):
+            raw_nearby_zones = nearby_result
         else:
-            self.log("Drone is outside one of the defined zones")
+            raw_nearby_zones = {}
+
+        # Once the drone has completely left every zone's nearby threshold,
+        # allow those zones to be detected again in a future mission segment.
+        if not raw_nearby_zones:
+            self._detoured_sade_zones.clear()
+
+        nearby_zones = {
+            zone_id: distance
+            for zone_id, distance in raw_nearby_zones.items()
+            if zone_id not in self._detoured_sade_zones
+        }
+
+        if inside is not None:
+            self.log_error(
+                f"Drone is inside SADE zone {inside}"
+            )
+            self._nearby_zones = {}
+
+        elif nearby_zones:
+            self.log("Drone is nearby one or more SADE zones")
+            await self.close_monitoring(nearby_zones)
+
+        else:
+            self.log("Drone is outside the monitored SADE zones")
+            self._nearby_zones = {}
+
 
     async def hold(self):
         await self._system.action.hold()
@@ -379,6 +1345,91 @@ class ResilientDrone:
             self._system.action.goto_location, latitude, longitude, altitude, yaw
         )
 
+    async def download_current_mission_state(
+        self,
+        *,
+        progress_timeout_s: float = 5.0,
+    ) -> tuple[list[MissionItem], int | None]:
+        """Download the active mission and determine its current item.
+
+        Returns:
+            A tuple containing:
+
+            - The mission items currently stored on the vehicle.
+            - The current item index, or None if the mission has not started.
+        """
+        self.log("Downloading current mission state")
+
+        mission_plan = await self._system.mission.download_mission()
+        mission_items = mission_plan.mission_items
+
+        self.log(
+            f"Downloaded {len(mission_items)} mission items"
+        )
+
+        current_index: int | None = None
+        reported_total: int | None = None
+
+        try:
+            async with asyncio.timeout(progress_timeout_s):
+                async for progress in self.mission_mission_progress():
+                    reported_total = progress.total
+
+                    if progress.current < 0:
+                        current_index = None
+                    else:
+                        current_index = progress.current
+                        self.current_progress_mission = progress.current
+
+                    self.log(
+                        "Mission progress sample: "
+                        f"current={progress.current}, "
+                        f"total={progress.total}"
+                    )
+                    break
+
+        except TimeoutError:
+            # The main mission-progress monitor normally keeps this property
+            # current. Use it as a fallback if a second stream sample times out.
+            fallback_index = self.current_progress_mission
+
+            if fallback_index >= 0:
+                current_index = fallback_index
+
+            self.log_warning(
+                "Timed out waiting for a mission-progress sample; "
+                f"using stored index {current_index}"
+            )
+
+        if (
+            reported_total is not None
+            and reported_total != len(mission_items)
+        ):
+            self.log_warning(
+                "Downloaded mission count differs from mission progress: "
+                f"downloaded={len(mission_items)}, "
+                f"reported={reported_total}"
+            )
+
+        for index, item in enumerate(mission_items):
+            if current_index is None:
+                status = "pending"
+            elif index < current_index:
+                status = "finished"
+            elif index == current_index:
+                status = "current"
+            else:
+                status = "pending"
+
+            self.log(
+                f"Mission waypoint {index}: {status} "
+                f"(lat={item.latitude_deg:.7f}, "
+                f"lon={item.longitude_deg:.7f}, "
+                f"rel_alt={item.relative_altitude_m:.1f})"
+            )
+
+        return mission_items, current_index
+
     async def core_connection_state(self):
         self.log("Monitoring core connection state")
         async for state in self._system.core.connection_state():
@@ -432,32 +1483,13 @@ class ResilientDrone:
     async def execute_mission(
         self, mission_steps: list[MissionStep] | list[MissionItem]
     ) -> None:
-        if isinstance(mission_steps[0], MissionStep):
-            self._current_mission = mission_steps
-            execute_coordinates = True
-            allowed_short_desc = ["takeoff", "return_to_base"]
-            for i in self._current_mission:
-                if i.short_name in allowed_short_desc:
-                    execute_coordinates = False
-            if (
-                self.coordinate_based_missions
-                and execute_coordinates
-                and self.drone_id <= SURVELLIANCE_DRONE_IDS_MAX
-            ):
-                # we will only creat the cooridnate accurate mission
-                lat, lon, alt = get_origin()
-                self.mission_plan = [_create_mission_item(lat, lon, alt, speed=20.0)]
-            else:
-                self.mission_plan = [
-                    step.create_mission_item() for step in mission_steps
-                ]
-        else:
-            self.mission_plan = mission_steps
-        mission_plan_mission_plan = MissionPlan(self.mission_plan)
+        self._current_mission = mission_steps
+        _current_mission_items = [step.create_mission_item() for step in mission_steps]
+        mission_plan = MissionPlan(_current_mission_items)
         self.log("Uploading mission")
         while True:
             try:
-                await self.mission.upload_mission(mission_plan_mission_plan)
+                await self.mission.upload_mission(mission_plan)
                 break
             except MissionError:
                 log.warning("Mission upload failed, retrying in 5 seconds")
@@ -471,109 +1503,6 @@ class ResilientDrone:
         # Monitor mission progress
         await self._monitor_mission_progress()
 
-    async def reset_and_execute_mission(self):
-        self.log("Downloading current mission...")
-        mission_plan = await self._system.mission.download_mission()
-        mission_items = mission_plan.mission_items
-
-        self.log(f"Original mission has {len(mission_items)} items")
-
-        # Create new mission items with adjusted altitude
-        new_items = []
-        for i, item in enumerate(mission_items):
-            new_rel_alt = item.relative_altitude_m * 2
-
-            new_item = MissionItem(
-                latitude_deg=item.latitude_deg,
-                longitude_deg=item.longitude_deg,
-                relative_altitude_m=new_rel_alt,
-                speed_m_s=item.speed_m_s,
-                is_fly_through=item.is_fly_through,
-                gimbal_pitch_deg=float("nan"),
-                gimbal_yaw_deg=float("nan"),
-                camera_action=MissionItem.CameraAction.NONE,
-                loiter_time_s=float("nan"),
-                camera_photo_interval_s=float("nan"),
-                camera_photo_distance_m=float("nan"),
-                acceptance_radius_m=float("nan"),
-                yaw_deg=float("nan"),
-                vehicle_action=MissionItem.VehicleAction.NONE,
-            )
-
-            # Check if this item should be included in the new mission
-            for j in self.mission_plan[self.current_progress_mission :]:
-                if compare_mission_items(j, new_item):
-                    new_items.append(new_item)
-                    self.log(
-                        f"""Item {i}:
-                            {item.relative_altitude_m:.1f}
-                            -> {new_rel_alt:.1f} m"""
-                    )
-                    break  # Only add once, then move to next item
-
-        # Validate mission before upload
-        if not new_items:
-            self.log("WARNING: No mission items to upload, keeping original mission")
-            return
-
-        new_plan = MissionPlan(new_items)
-        self.log(f"New mission has {len(new_items)} items")
-
-        # Stop current mission before uploading new one
-        self.log("Pausing current mission before upload...")
-        try:
-            await self._system.mission.pause_mission()
-            await asyncio.sleep(1)  # Give time for pause to take effect
-        # ruff: noqa: BLE001
-        except Exception as e:
-            self.log(f"Could not pause mission: {e}, continuing anyway...")
-
-        # Use the robust upload method with retry mechanism
-        self.log("Uploading new mission...")
-        await self.mission_upload_mission(new_plan)
-
-        self.log("Starting new mission after sade zone approval")
-        await self.mission_start_mission()
-        await asyncio.sleep(2)
-
-        # Monitor mission progress
-        await self._monitor_mission_progress()
-
-    async def reset_and_execute_mission_case_study(self):
-        self.log("Original mission is what executing")
-
-        lat, lon, alt = get_origin()
-        new_items = [
-            _create_mission_item(lat, lon, alt * 2, speed=20.0, is_fly_through=False)
-        ]
-        # Validate mission before upload
-        if not new_items:
-            self.log("WARNING: No mission items to upload, keeping original mission")
-            return
-
-        new_plan = MissionPlan(new_items)
-        self.log(f"New mission has {len(new_items)} items")
-
-        # Stop current mission before uploading new one
-        self.log("Pausing current mission before upload...")
-        try:
-            await self._system.mission.pause_mission()
-            await asyncio.sleep(1)  # Give time for pause to take effect
-        # ruff: noqa: BLE001
-        except Exception as e:
-            self.log(f"Could not pause mission: {e}, continuing anyway...")
-
-        # Use the robust upload method with retry mechanism
-        self.log("Uploading new mission...")
-        await self.mission_upload_mission(new_plan)
-
-        self.log("Starting new mission after sade zone approval")
-        await self.mission_start_mission()
-        await asyncio.sleep(2)
-
-        # Monitor mission progress
-        await self._monitor_mission_progress()
-
     async def _monitor_mission_progress(self) -> None:
         retries_left = 5
         spaced_sleep_sec = 2
@@ -581,14 +1510,10 @@ class ResilientDrone:
         # log first mission item description separately
         self._log_mission_item_description_progress(item_idx=0)
 
-        while retries_left > 0 and not self.get_set_home():
+        while retries_left > 0:
             try:
                 async for progress in self.mission.mission_progress():
                     self.current_progress_mission = progress.current
-                    if self.get_set_home():
-                        self.log("return home command issued so going home")
-                        self.log(f"progress is {progress.current}")
-                        return
                     self._report_mission_progress(progress)
                     if progress.current == progress.total:
                         self.log("Mission completed")

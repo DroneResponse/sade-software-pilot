@@ -2,8 +2,8 @@
 
 import argparse
 import asyncio
-import random
 from pathlib import Path
+from this import s
 from typing import Any
 
 from droneresponse_mathtools import Lla
@@ -13,7 +13,8 @@ from rich.traceback import install
 from .parameters_parser import get_params_based_on_fcu_id
 from .uav import NED
 from .uav import MissionStep
-from .uav import ResilientDrone
+from .uav import ResilientDrone, LatLongAlt
+from .config import parse_flight_path, FlightPath
 
 install(show_locals=True)
 
@@ -54,61 +55,17 @@ async def create_mission(
 
     # local vars
     speed_mps = 20.0
-    if drone.drone_id > 15:
-        cruising_altitude = 30
-    else:
-        cruising_altitude = 70
-    clicks = 40  # defining click as 100m;
+    cruising_altitude = 50
     speed_mps = 20.0
+    startup_wait = 2
 
-    take_off = [
-        MissionStep(
-            short_name="takeoff",
-            description="Take off from home position",
-            ned=NED(north=0, east=0, down=-cruising_altitude),
-            home_alt=home.altitude,
-            speed=speed_mps,
-            home=home,
-        )
-    ]
+    flight_path: dict[str, FlightPath] = parse_flight_path()
+    drone_flight_path: FlightPath = flight_path[str(drone.drone_id)]
 
-    random_mission = [
-        MissionStep(
-            short_name="go_north",
-            description="Going 2 clicks north",
-            ned=NED(north=2 * clicks, east=0, down=-cruising_altitude),
-            home_alt=home.altitude,
-            speed=speed_mps,
-            home=home,
-        ),
-        MissionStep(
-            short_name="go_east",
-            description="Going 2 clicks east",
-            ned=NED(north=0, east=2 * clicks, down=-cruising_altitude),
-            home_alt=home.altitude,
-            speed=speed_mps,
-            home=home,
-        ),
-        MissionStep(
-            short_name="go_west",
-            description="Going 2 clicks west",
-            ned=NED(north=0, east=-2 * clicks, down=-cruising_altitude),
-            home_alt=home.altitude,
-            speed=speed_mps,
-            home=home,
-        ),
-        # Northwest
-        MissionStep(
-            short_name="go_northwest",
-            description="Going 2 clicks northwest",
-            ned=NED(north=2 * clicks, east=-2 * clicks, down=-cruising_altitude),
-            home_alt=home.altitude,
-            speed=speed_mps,
-            home=home,
-        ),
-    ]
+    # the "click" unit makes it easier to scale the mission up or down
+    log.info(f"Drone flight path: {drone_flight_path}")
 
-    return_to_base_home = [
+    _mission_script_return_to_base = [
         MissionStep(
             short_name="return_to_base",
             description="SADE Zone access denied; Returning home",
@@ -116,21 +73,48 @@ async def create_mission(
             home_alt=home.altitude,
             speed=speed_mps,
             home=home,
+            move_lla=None,
         ),
     ]
 
-    drone.set_home_mission(return_to_base_home)
+    _mission_scripts = []
+    mission_step = None
+    for step in drone_flight_path.flight_path:
+        if step.lat is None and step.lon is None and step.alt is not None:
+            mission_step = MissionStep(
+                short_name="takeoff",
+                description="Take off from home position",
+                ned=NED(north=0, east=0, down=-step.alt),
+                home_alt=home.altitude,
+                speed=speed_mps,
+                home=home,
+                move_lla=None,
+            )
+        elif step.lat is not None and step.lon is not None and step.alt is not None:
+            mission_step = MissionStep(
+                short_name=step.short_name,
+                description=step.description,
+                ned=None,
+                home_alt=home.altitude,
+                speed=speed_mps,
+                home=home,
+                move_lla=LatLongAlt(
+                    lat=step.lat, lon=step.lon, alt=step.alt + cruising_altitude
+                ),
+            )
+        _mission_scripts.append(mission_step)
 
-    log.info("Drone is starting the mission, taking off!!")
-    await asyncio.sleep(1)
-    await drone.execute_mission(mission_steps=take_off)
-    while not drone.get_set_home():
-        await asyncio.sleep(1)
-        # ruff: noqa: S311 - Not used for cryptographic purposes
-        choiced_mission = random.choices(random_mission, k=3)
-        await drone.execute_mission(mission_steps=choiced_mission)
-    drone.set_set_home(False)
-    await drone.execute_mission(mission_steps=return_to_base_home)
+    sleep_time = startup_wait
+    log.info(f"Drone {drone.drone_id} waiting {sleep_time} seconds before starting")
+    await asyncio.sleep(sleep_time)
+
+    try:
+        await drone.execute_mission(mission_steps=_mission_scripts)
+    except Exception as err:
+        # always return to base
+        log.error(err)
+        await drone.execute_mission(mission_steps=_mission_script_return_to_base)
+        raise
 
 
 async def run(

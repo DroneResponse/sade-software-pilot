@@ -2,6 +2,7 @@ import json
 from datetime import timedelta
 from pathlib import Path
 from typing import Any
+from pydantic import BaseModel
 
 # Used for calcaulations
 MAX_LAT = 90
@@ -24,6 +25,33 @@ SADE_ZONE_LEASE_FILE = Path("/") / "tmp" / "run" / "control" / "sade_zone_leases
 SADE_ZONE_CONFIG_FILE = (
     Path("/") / "tmp" / "run" / "config" / "unreal" / "server_config.json"
 )
+
+class ActionsForFCU(BaseModel):
+    short_name: str | None
+    description: str | None
+    lat: float | None
+    lon: float | None
+    alt: float | None
+    home: bool
+
+
+class FlightPath(BaseModel):
+    drone_id: int
+    flight_path: list[ActionsForFCU]
+
+    def __repr__(self) -> str:
+        return f"FlightPath(drone_id={self.drone_id}, flight_path's length ={len(self.flight_path)})"
+
+
+def parse_flight_path() -> dict[str, FlightPath]:
+    BASE_PATH = Path(__file__).parent
+    flight_path = BASE_PATH / "flight_path.json"
+    with open(flight_path, "r") as file_buffer:
+        params = json.load(file_buffer)
+    result = {}
+    for item in params:
+        result[item["drone_id"]] = FlightPath(**item)
+    return result
 
 
 def get_origin():

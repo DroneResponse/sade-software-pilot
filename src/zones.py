@@ -2,24 +2,36 @@ import asyncio
 import fcntl
 import json
 import math
-from datetime import UTC
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
-from typing import Self
+from typing import Any, Literal, Self
 
 from loguru import logger as log
-from pydantic import BaseModel
-from pydantic import Field
+from pydantic import BaseModel, Field
 
-from .config import ALLOWED_DRONE_IDS
-from .config import LEASE_TIME
-from .config import SADE_ZONE_CONFIG_FILE
-from .config import SADE_ZONE_LEASE_FILE
-from .config import SURVELLIANCE_DRONE_IDS_MAX
-from .config import ZONE_THRESHOLD_METERS
+from .config import (
+    ALLOWED_DRONE_IDS,
+    LEASE_TIME,
+    SADE_ZONE_CONFIG_FILE,
+    SADE_ZONE_LEASE_FILE,
+    SURVELLIANCE_DRONE_IDS_MAX,
+    ZONE_THRESHOLD_METERS,
+)
 
 LINE_POSSIBLE_WITH_POINTS = 2
+
+
+class SadeZoneTimer:
+    def __init__(self, zone_id: int):
+        self.zone_id: int = zone_id
+        self.start_timer: float = asyncio.get_event_loop().time()
+
+    def get_sade_zone_availability(self) -> bool:
+        loop = asyncio.get_event_loop()
+        current_time = loop.time()
+        time_in_minutes = (current_time - self.start_timer) / 60
+        # check if both are even return true
+        return time_in_minutes % 2 == 0 and self.zone_id % 2 == 0
 
 
 class SadeZoneLease(BaseModel):
@@ -239,6 +251,9 @@ class SadeZones:
     def __init__(self):
         self.zones: list[SadeZone] = self.load()
         self.drones: list[str] = []
+        self.zone_timer: dict[str, SadeZoneTimer] = {
+            zone.sade_id: SadeZoneTimer(index) for index, zone in enumerate(self.zones)
+        }
 
     def get_sade_zone(self, zone_id: str) -> SadeZone | None:
         for zone in self.zones:
@@ -334,13 +349,13 @@ class SadeZones:
                     SadeZoneLease.from_dict(lease_dict)
                     for lease_dict in zone_status.get("leases", [])
                 ]
-                active_leases = [
-                    lease for lease in leases if lease.is_active(datetime.now(tz=UTC))
-                ]
-                # ruff: noqa: F841 - Not used for cryptographic purposes
-                drones_in_zone = [lease.drone_id for lease in active_leases]
 
-                if drone.drone_id in ALLOWED_DRONE_IDS:
+                zone_timer = self.zone_timer.get(zone_sade_id)
+                zone_is_available = False
+                if zone_timer:
+                    zone_is_available = zone_timer.get_sade_zone_availability()
+
+                if zone_is_available:
                     now = datetime.now(tz=UTC)
                     expires_at = now + LEASE_TIME
                     lease = SadeZoneLease(
@@ -361,16 +376,6 @@ class SadeZones:
                     drone.log("SADE Zone leasing completed now drone is ready to fly")
                     drone.log("drone is now ready to fly")
                     return lease
-                if (
-                    drone.drone_id <= SURVELLIANCE_DRONE_IDS_MAX
-                    and drone.drone_id not in ALLOWED_DRONE_IDS
-                ):
-                    drone.log("Drone ID not allowed let make them hold for monitoring")
-                    return None
-                # ruff: noqa: TRY300 - no check needed
-                drone.set_set_home(True)
-                self.drones.append(drone.drone_id)
-                drone.log("Drone not allowed go home")
                 return None
 
             except json.JSONDecodeError as err:
