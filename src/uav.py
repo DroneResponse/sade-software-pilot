@@ -3,11 +3,7 @@
 import asyncio
 from collections.abc import Callable
 from dataclasses import dataclass
-from math import cos
-from math import hypot
-from math import isclose
-from math import isfinite
-from math import radians
+from math import cos, hypot, isclose, isfinite, radians
 
 import grpc
 from droneresponse_mathtools import Lla
@@ -25,8 +21,6 @@ from .config import MIN_LAT
 from .config import MIN_LON
 from .config import MIN_SPEED
 from .config import ZONE_REQUEST_THRESHOLD_METERS
-from .config import get_origin
-from .zones import SadeZoneLease
 from .zones import SadeZones
 
 NEARBY_RECHECK_INTERVAL = 1
@@ -808,11 +802,12 @@ class ResilientDrone:
         self._approaching_sade_zone = None
         self.home_mission = []
         self.mission_plan = []
-        self.current_progress_mission = 0
+        self.current_progress_mission: int | None = None
         self.coordinate_based_missions = True
         self.executed_go_home = False
         self._avoiding_sade_zone = False
         self._detoured_sade_zones: set[str] = set()
+        self._failed_sade_zones: set[str] = set()
 
     def set_home_mission(self, home_mission: list[MissionItem]):
         self.home_mission = home_mission
@@ -921,28 +916,45 @@ class ResilientDrone:
                     "The currently uploaded mission is empty"
                 )
 
-            if current_index is None:
-                # The mission has not started. Its first item is the target.
-                target_index = 0
-            elif current_index >= len(mission_items):
-                raise ValueError(
-                    "The original mission has already completed"
+            original_target_index = 0 if current_index is None else current_index
+            if original_target_index >= len(mission_items):
+                raise ValueError("The original mission has already completed")
+
+            target_index = original_target_index
+            skipped_indices: list[int] = []
+
+            # A denied mission item inside the zone cannot be completed safely.
+            # Continue from the first future mission item outside the zone.
+            while target_index < len(mission_items):
+                candidate = mission_items[target_index]
+                candidate_is_inside = zone.is_inside(
+                    candidate.latitude_deg,
+                    candidate.longitude_deg,
                 )
-            else:
-                target_index = current_index
+                self.log(
+                    f"Mission waypoint {target_index} is "
+                    f"{'inside' if candidate_is_inside else 'outside'} "
+                    f"SADE zone {zone_id}"
+                )
+                if not candidate_is_inside:
+                    break
+
+                skipped_indices.append(target_index)
+                target_index += 1
+
+            if target_index >= len(mission_items):
+                raise ValueError(
+                    f"Mission waypoints {skipped_indices} are inside {zone_id}, "
+                    "and no future waypoint exists outside the zone"
+                )
+
+            if skipped_indices:
+                self.log_warning(
+                    f"Skipping restricted mission waypoints {skipped_indices}; "
+                    f"mission will continue from waypoint {target_index}"
+                )
 
             target_item = mission_items[target_index]
-
-            # Ignore altitude here because this is specifically a lateral
-            # avoidance maneuver.
-            if zone.is_inside(
-                target_item.latitude_deg,
-                target_item.longitude_deg,
-            ):
-                raise ValueError(
-                    f"Mission waypoint {target_index} is inside "
-                    f"SADE zone {zone_id}; remaining in hold mode"
-                )
 
             (
                 current_latitude,
@@ -974,10 +986,17 @@ class ResilientDrone:
             if not detour_waypoints:
                 self.log(
                     f"The path to mission waypoint {target_index} "
-                    f"does not cross {zone_id}; resuming mission"
+                    f"does not cross {zone_id}"
                 )
 
+                if target_index != original_target_index:
+                    await self.mission_set_current_item(target_index)
+
+                self.log(
+                    f"Resuming original mission from waypoint {target_index}"
+                )
                 await self.mission_resume()
+                self._detoured_sade_zones.add(zone_id)
                 return True
 
             self.log(
@@ -1013,24 +1032,30 @@ class ResilientDrone:
 
             self.log(
                 f"Finished navigating around {zone_id}; "
-                f"resuming mission at waypoint {target_index}"
+                f"continuing from mission waypoint {target_index}"
             )
 
+            if target_index != original_target_index:
+                await self.mission_set_current_item(target_index)
+
             # The original mission was never cleared or re-uploaded, so this
-            # continues from the flight controller's stored mission index.
+            # continues from the selected safe mission item.
             await self.mission_resume()
 
             self._detoured_sade_zones.add(zone_id)
             return True
 
-        except Exception as error:  # noqa: BLE001
+        except Exception as error:
             self.log_error(
                 f"Failed to navigate around SADE zone {zone_id}: {error}"
             )
 
+            if isinstance(error, ValueError):
+                self._failed_sade_zones.add(zone_id)
+
             try:
                 await self.hold()
-            except Exception as hold_error:  # noqa: BLE001
+            except Exception as hold_error:
                 self.log_error(
                     "Failed to enter hold mode after detour failure: "
                     f"{hold_error}"
@@ -1239,11 +1264,13 @@ class ResilientDrone:
         # allow those zones to be detected again in a future mission segment.
         if not raw_nearby_zones:
             self._detoured_sade_zones.clear()
+            self._failed_sade_zones.clear()
 
         nearby_zones = {
             zone_id: distance
             for zone_id, distance in raw_nearby_zones.items()
             if zone_id not in self._detoured_sade_zones
+            and zone_id not in self._failed_sade_zones
         }
 
         if inside is not None:
@@ -1269,6 +1296,18 @@ class ResilientDrone:
 
     async def mission_pause(self):
         await self._system.mission.pause_mission()
+
+    async def mission_set_current_item(self, item_index: int) -> None:
+        """Change the active item in the mission stored on the vehicle."""
+        if item_index < 0:
+            raise ValueError("Mission item index cannot be negative")
+
+        self.log(f"Setting current mission item to {item_index}")
+        await self._retry(
+            self._system.mission.set_current_mission_item,
+            item_index,
+        )
+        self.current_progress_mission = item_index
 
     async def _retry(
         self,
@@ -1347,69 +1386,25 @@ class ResilientDrone:
 
     async def download_current_mission_state(
         self,
-        *,
-        progress_timeout_s: float = 5.0,
     ) -> tuple[list[MissionItem], int | None]:
-        """Download the active mission and determine its current item.
-
-        Returns:
-            A tuple containing:
-
-            - The mission items currently stored on the vehicle.
-            - The current item index, or None if the mission has not started.
-        """
+        """Download the mission and use the continuously monitored progress."""
         self.log("Downloading current mission state")
 
         mission_plan = await self._system.mission.download_mission()
         mission_items = mission_plan.mission_items
+        self.log(f"Downloaded {len(mission_items)} mission items")
 
-        self.log(
-            f"Downloaded {len(mission_items)} mission items"
-        )
-
-        current_index: int | None = None
-        reported_total: int | None = None
-
-        try:
-            async with asyncio.timeout(progress_timeout_s):
-                async for progress in self.mission_mission_progress():
-                    reported_total = progress.total
-
-                    if progress.current < 0:
-                        current_index = None
-                    else:
-                        current_index = progress.current
-                        self.current_progress_mission = progress.current
-
-                    self.log(
-                        "Mission progress sample: "
-                        f"current={progress.current}, "
-                        f"total={progress.total}"
-                    )
-                    break
-
-        except TimeoutError:
-            # The main mission-progress monitor normally keeps this property
-            # current. Use it as a fallback if a second stream sample times out.
-            fallback_index = self.current_progress_mission
-
-            if fallback_index >= 0:
-                current_index = fallback_index
-
+        current_index = self.current_progress_mission
+        if current_index is None and mission_items:
+            # execute_mission() has already started the uploaded mission. If its
+            # first progress event has not arrived yet, item zero is current.
+            current_index = 0
             self.log_warning(
-                "Timed out waiting for a mission-progress sample; "
-                f"using stored index {current_index}"
+                "No mission-progress event has been received; "
+                "using mission waypoint 0"
             )
-
-        if (
-            reported_total is not None
-            and reported_total != len(mission_items)
-        ):
-            self.log_warning(
-                "Downloaded mission count differs from mission progress: "
-                f"downloaded={len(mission_items)}, "
-                f"reported={reported_total}"
-            )
+        else:
+            self.log(f"Using monitored mission index {current_index}")
 
         for index, item in enumerate(mission_items):
             if current_index is None:
@@ -1486,6 +1481,7 @@ class ResilientDrone:
         self._current_mission = mission_steps
         _current_mission_items = [step.create_mission_item() for step in mission_steps]
         mission_plan = MissionPlan(_current_mission_items)
+        self.current_progress_mission = None
         self.log("Uploading mission")
         while True:
             try:

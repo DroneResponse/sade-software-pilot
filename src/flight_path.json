@@ -5,9 +5,113 @@
       {
         "short_name": "",
         "description": "",
-        "lat": 39.7200038,
-        "lon": -86.3134049,
-        "alt": 225.0,
+        "lat": 39.7083145,
+        "lon": -86.3041478,
+        "alt": 229.3277943,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 39.7100325,
+        "lon": -86.3050910,
+        "alt": 229.3277943,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 39.7108311,
+        "lon": -86.3056081,
+        "alt": 228.6187087,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 39.7112088,
+        "lon": -86.3060160,
+        "alt": 228.6187087,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 39.7117336,
+        "lon": -86.3053661,
+        "alt": 229.1026862,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 39.7121906,
+        "lon": -86.3047789,
+        "alt": 231.1862410,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 39.7126080,
+        "lon": -86.3041795,
+        "alt": 231.1862410,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 39.7125793,
+        "lon": -86.3034949,
+        "alt": 231.1862410,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 39.7123545,
+        "lon": -86.3037920,
+        "alt": 231.1862410,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 39.7124819,
+        "lon": -86.3039802,
+        "alt": 231.1862410,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 39.7122393,
+        "lon": -86.3042650,
+        "alt": 231.1862410,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 39.7121112,
+        "lon": -86.3040962,
+        "alt": 231.1862410,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 39.7119258,
+        "lon": -86.3043407,
+        "alt": 231.1862410,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 39.7120967,
+        "lon": -86.3045579,
+        "alt": 231.1862410,
         "home": false
       }
     ]
