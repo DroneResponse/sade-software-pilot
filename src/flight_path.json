@@ -122,9 +122,65 @@
       {
         "short_name": "",
         "description": "",
-        "lat": 39.7200038,
-        "lon": -86.3134049,
-        "alt": 225.0,
+        "lat": 39.7061046,
+        "lon": -86.3054372,
+        "alt": 232,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 39.7057120,
+        "lon": -86.3058907,
+        "alt": 232,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 39.7051162,
+        "lon": -86.3067462,
+        "alt": 234,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 39.7046882,
+        "lon": -86.3075459,
+        "alt": 234,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 39.7045477,
+        "lon": -86.3079766,
+        "alt": 234,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 39.7049097,
+        "lon": -86.3085407,
+        "alt": 233,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 39.7052632,
+        "lon": -86.3081364,
+        "alt": 233,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 39.7056542,
+        "lon": -86.3076112,
+        "alt": 233,
         "home": false
       }
     ]
@@ -135,9 +191,17 @@
       {
         "short_name": "",
         "description": "",
-        "lat": 39.7200038,
-        "lon": -86.3134049,
-        "alt": 225.0,
+        "lat": 39.7047473,
+        "lon": -86.3022879,
+        "alt": 237.0,
+        "home": false
+      },
+      {
+        "short_name": "",
+        "description": "",
+        "lat": 39.7016241,
+        "lon": -86.2975458,
+        "alt": 239.0,
         "home": false
       }
     ]
